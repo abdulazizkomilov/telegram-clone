@@ -1,0 +1,331 @@
++998932289963
+abdulaziz9963
+
+a489e143-50b5-4dd8-a3ae-2128e5d7b531
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5MDk0MDgyLCJpYXQiOjE3Mjg4MzQ4ODIsImp0aSI6ImRmNTAzNGEzY2Y2YzQzMjU5M2YyOGQ4NmEwNDdiNTUwIiwidXNlcl9pZCI6ImE0ODllMTQzLTUwYjUtNGRkOC1hM2FlLTIxMjhlNWQ3YjUzMSJ9.tH8AXw4b5uyRSyIhIr8_3PbH4Bo_e4ElcCJi0fEBD78
+
+
+-----------------------------------------------------------------------------
+
+
++998931159963
+abdulaziz
+
+387738c3-8ac4-4503-aff1-a37fdd66617d
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5MzA3NzI0LCJpYXQiOjE3MjkwNDg1MjQsImp0aSI6Ijk1ZjIyYmZmYTUwYTQ0MjA4OGQ0MjhiZWMyNzE3YmU5IiwidXNlcl9pZCI6IjM4NzczOGMzLThhYzQtNDUwMy1hZmYxLWEzN2ZkZDY2NjE3ZCJ9.hI7DsNPdJXKLZWRvAfVqfMjSEuKuCsOeEoXXmsJTt54
+
+
+
+
+-----------------------------------------------------------------------------
+
++998931159961
+abdulaziz99_63
+
+bd53f88a-29c4-48a9-8cbe-58b9e878fcc1
+
+eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzI5MzE1OTMyLCJpYXQiOjE3MjkwNTY3MzIsImp0aSI6IjczNzk2MjZjMjM2ZTRhMDFhMjVlZWE1MGI2MmUzMGM3IiwidXNlcl9pZCI6ImJkNTNmODhhLTI5YzQtNDhhOS04Y2JlLTU4YjllODc4ZmNjMSJ9.Ny0MVa7Tsfza3Ye-OyQ09sj1Z8-0phrenUrxVWwHodU
+
+
+
+chat_id
+
+AIzaSyDeccbsS4ZkBNOkTv0mC0PFVvUt1_Kq9_M
+
+
+
+
+group_id
+
+699671db-cb60-434b-b3c2-75d08739c1e3
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+from channels.generic.websocket import AsyncJsonWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.utils import timezone
+from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
+from djangochannelsrestframework import mixins
+from djangochannelsrestframework.observer.generics import action
+from djangochannelsrestframework.observer.generics import ObserverModelInstanceMixin
+from django.contrib.auth.models import AnonymousUser
+
+from share.encryption import encrypt_message
+
+from .models import Chat, ChatParticipant, Message
+from .serializers import ChatSerializer, MessageSerializer
+from user.models import User
+from user.serializers import UserSerializer
+
+
+class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
+    queryset = Chat.objects.all()
+    serializer_class = ChatSerializer
+    lookup_field = "pk"
+
+    async def connect(self):
+        self.user = self.scope.get('user', AnonymousUser())
+        self.chat_id = self.scope['url_route']['kwargs']['pk']
+        self.chat_subscribe = self.scope['url_route']['kwargs']['pk']
+
+        if isinstance(self.user, AnonymousUser) or not self.user.is_authenticated:
+            await self.close()
+            return
+
+        chat_room = await self.get_chat(self.chat_id)
+        if not chat_room:
+            await self.close()
+            return
+        owner, user = await self.get_chat_participants(chat_room)
+
+        if self.user.id in [owner.id, user.id]:
+            self.room_group_name = f'chat_{self.chat_id}'
+            await self.channel_layer.group_add(f'chat__{self.chat_subscribe}', self.channel_name)
+            await self.accept()
+            await self.add_user_to_chat(self.chat_subscribe)
+            await self.notify_users()
+            await self.get_messages(self.chat_subscribe)
+        else:
+            await self.close()
+
+    async def disconnect(self, code):
+        if not isinstance(self.user, AnonymousUser) and self.user.is_authenticated:
+            await self.remove_user_from_chat(self.chat_subscribe)
+            await self.notify_users()
+            await self.channel_layer.group_discard(f'chat__{self.chat_subscribe}', self.channel_name)
+        await super().disconnect(code)
+
+    @action()
+    async def join_chat(self, pk, **kwargs):
+        await self.add_user_to_chat(pk)
+        await self.notify_users()
+        await self.get_messages(pk)
+
+    @action()
+    async def leave_chat(self, pk, **kwargs):
+        await self.remove_user_from_chat(pk)
+        await self.notify_users()
+
+    @action()
+    async def create_message(self, pk, data, **kwargs):
+        chat = await self.get_chat(pk)
+        if not chat:
+            return
+
+        user = self.scope["user"]
+        recipient = await self.get_recipient(chat, user)
+
+        if not recipient:
+            return
+
+        # encrypted_text = encrypt_message(recipient.public_key, data.get("text"))
+
+        message = await self.save_message(chat, user, {"text": data.get("text"), **data})
+
+        serialized_message = await self.serialize_message(message)
+
+        await self.channel_layer.group_send(
+            self.room_group_name,
+            {
+                'type': 'chat_message',
+                'text': serialized_message
+            }
+        )
+
+    @action()
+    async def get_messages(self, pk, **kwargs):
+        messages = await self.fetch_messages(pk)
+        serialized_messages = await self.serialize_messages(messages)
+
+        await self.send_json({
+            "action": "get_messages",
+            "messages": serialized_messages
+        })
+
+    @action()
+    async def like_message(self, message_id, **kwargs):
+        user = self.scope["user"]
+        message = await self.get_message(message_id)
+        if message:
+            await self.add_like(message, user)
+            serialized_message = await self.serialize_message(message)
+            await self.channel_layer.group_send(
+                f'chat__{message.chat.id}',
+                {
+                    'type': 'message_liked',
+                    'message': serialized_message
+                }
+            )
+
+    @action()
+    async def unlike_message(self, message_id, **kwargs):
+        user = self.scope["user"]
+        message = await self.get_message(message_id)
+        if message:
+            await self.remove_like(message, user)
+            serialized_message = await self.serialize_message(message)
+            await self.channel_layer.group_send(
+                f'chat__{message.chat.id}',
+                {
+                    'type': 'message_unliked',
+                    'message': serialized_message
+                }
+            )
+
+    @database_sync_to_async
+    def get_message(self, message_id):
+        try:
+            return Message.objects.get(id=message_id)
+        except Message.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def get_recipient(self, chat: Chat, user: User):
+        if chat.owner == user:
+            return chat.user
+        elif chat.user == user:
+            return chat.owner
+        return None
+
+    @database_sync_to_async
+    def add_like(self, message, user):
+        message.liked_by.add(user)
+        message.save()
+
+    @database_sync_to_async
+    def remove_like(self, message, user):
+        message.liked_by.remove(user)
+        message.save()
+
+    async def message_liked(self, event):
+        await self.send_json({
+            'action': 'message_liked',
+            'data': event['message']
+        })
+
+    async def message_unliked(self, event):
+        await self.send_json({
+            'action': 'message_unliked',
+            'data': event['message']
+        })
+
+    @database_sync_to_async
+    def fetch_messages(self, pk: int):
+        try:
+            chat = Chat.objects.get(pk=pk)
+            return list(chat.messages.order_by('sent_at'))
+        except Chat.DoesNotExist:
+            return []
+
+    @database_sync_to_async
+    def serialize_messages(self, messages):
+        return MessageSerializer(messages, many=True, context={'user': self.user}).data
+
+    @database_sync_to_async
+    def serialize_message(self, message):
+        return MessageSerializer(message).data
+
+    async def notify_users(self):
+        chat = await self.get_chat(self.chat_id)
+        if not chat:
+            return
+
+        users = await self.current_users(chat)
+        for group in self.groups:
+            await self.channel_layer.group_send(
+                group,
+                {
+                    'type': 'update_users',
+                    'users': users
+                }
+            )
+
+    async def update_users(self, event: dict):
+        await self.send_json({'users': event["users"]})
+
+    @database_sync_to_async
+    def get_chat_participants(self, chat_room: Chat):
+        return chat_room.owner, chat_room.user
+
+    @database_sync_to_async
+    def get_chat(self, pk: int):
+        try:
+            return Chat.objects.get(pk=pk)
+        except Chat.DoesNotExist:
+            return None
+
+    @database_sync_to_async
+    def current_users(self, chat: Chat):
+        return [UserSerializer(user).data for user in chat.participants.all()]
+
+    @database_sync_to_async
+    def remove_user_from_chat(self, chat_id: int):
+        user = self.scope["user"]
+        ChatParticipant.objects.filter(user=user, chat_id=chat_id).delete()
+
+    @database_sync_to_async
+    def add_user_to_chat(self, chat_id: int):
+        user = self.scope["user"]
+        chat = Chat.objects.get(pk=chat_id)
+        if not ChatParticipant.objects.filter(user=user, chat=chat).exists():
+            ChatParticipant.objects.create(user=user, chat=chat)
+
+    @database_sync_to_async
+    def save_message(self, chat: Chat, user: User, data: dict):
+        return Message.objects.create(
+            chat=chat,
+            sender=user,
+            text=data.get("text"),
+            image=data.get("image"),
+            file=data.get("file"),
+            sent_at=timezone.now()
+        )
+
+    async def chat_message(self, event):
+        await self.send_json({
+            'action': 'new_message',
+            'data': event['text']
+        })
+
+
+class UserConsumer(
+    mixins.ListModelMixin,
+    mixins.RetrieveModelMixin,
+    mixins.PatchModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.CreateModelMixin,
+    mixins.DeleteModelMixin,
+    GenericAsyncAPIConsumer,
+):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+
+
+
+
+
+
+
+
+
