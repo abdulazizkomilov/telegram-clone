@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Check for Postgres
+# Check for Postgres readiness
 if [ "$DATABASE" = "postgres" ]; then
   echo "Waiting for postgres..."
   while ! nc -z $DB_HOST $DB_PORT; do
@@ -9,7 +9,7 @@ if [ "$DATABASE" = "postgres" ]; then
   echo "PostgreSQL started"
 fi
 
-# Check for Redis
+# Check for Redis readiness
 if [ "$REDIS_HOST" ] && [ "$REDIS_PORT" ]; then
   echo "Waiting for Redis..."
   while ! nc -z $REDIS_HOST $REDIS_PORT; do
@@ -18,27 +18,23 @@ if [ "$REDIS_HOST" ] && [ "$REDIS_PORT" ]; then
   echo "Redis started"
 fi
 
-echo "Starting celery"
-celery -A core worker --loglevel=info &
-
-echo "Starting celery beat"
-celery -A core beat --loglevel=info &
-
-# Running migrations
+# Run migrations
 echo "Running migrations"
 python manage.py migrate
-echo "Successfully migrated database"
 
-# Collecting static files
+# Collect static files
 echo "Collecting static files"
 python manage.py collectstatic --no-input
-echo "Successfully collected static files"
 
 # Compile translation messages
 #echo "Compiling translation messages"
 #django-admin compilemessages
-#echo "Successfully compiled messages"
 
-# Starting server
-echo "Starting server"
-python manage.py runserver 0.0.0.0:8000
+# Start Celery worker and beat as background processes
+echo "Starting Celery worker and beat"
+celery -A core worker --loglevel=info &
+celery -A core beat --loglevel=info &
+
+# Start Django server
+echo "Starting Django server"
+exec python manage.py runserver 0.0.0.0:8000
