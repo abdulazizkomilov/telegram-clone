@@ -46,6 +46,7 @@ jobs:
           ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
           cd ~/telegram-clone
           docker-compose down
+          docker system prune -f
           docker-compose pull $REGISTRY/${{ secrets.DOCKER_IMAGE }}:${{ env.IMAGE_TAG }}
-          docker-compose up -d
+          docker-compose up -d --force-recreate --remove-orphans
           EOF
