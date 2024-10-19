@@ -1,5 +1,5 @@
 from django.contrib.auth.models import BaseUserManager
-from share.encryption import generate_key_pair
+# from share.encryption import generate_key_pair
 
 
 class UserManager(BaseUserManager):
@@ -9,10 +9,10 @@ class UserManager(BaseUserManager):
         user = self.model(phone_number=phone_number, **extra_fields)
         user.username = phone_number
 
-        private_key, public_key = generate_key_pair()
+        # private_key, public_key = generate_key_pair()
 
-        user.public_key = public_key.decode('utf-8')
-        user.private_key = private_key.decode('utf-8')
+        # user.public_key = public_key.decode('utf-8')
+        # user.private_key = private_key.decode('utf-8')
 
         user.set_password(password)
         user.save(using=self._db)

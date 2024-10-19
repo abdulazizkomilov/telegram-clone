@@ -1,25 +1,25 @@
 import os
 import sys
-import sentry_sdk
+# import sentry_sdk
 
 from pathlib import Path
 from datetime import timedelta
 from decouple import config
 
-import firebase_admin
-from firebase_admin import credentials
+# import firebase_admin
+# from firebase_admin import credentials
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(os.path.join(BASE_DIR, 'apps'))
 
-sentry_sdk.init(
-    dsn="https://cd3a62c3999fbf7628ee7649f3311434@o4508120350261248.ingest.us.sentry.io/4508120352161792",
-    traces_sample_rate=1.0,
-    profiles_sample_rate=1.0,
-)
+# sentry_sdk.init(
+#     dsn="https://cd3a62c3999fbf7628ee7649f3311434@o4508120350261248.ingest.us.sentry.io/4508120352161792",
+#     traces_sample_rate=1.0,
+#     profiles_sample_rate=1.0,
+# )
 
-cred = credentials.Certificate('./telegram-clone-a9b01-firebase-adminsdk-uucjo-5af75c573b.json')
-firebase_admin.initialize_app(cred)
+# cred = credentials.Certificate('./telegram-clone-a9b01-firebase-adminsdk-uucjo-5af75c573b.json')
+# firebase_admin.initialize_app(cred)
 
 SECRET_KEY = "django-insecure-h+hioiqdj&dwja1h$@12=s8ra9zw%$-$!9txds$bh^ask+0iij"
 
@@ -124,6 +124,10 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "static"
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / "media"
 
 # Default primary key field type
 

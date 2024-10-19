@@ -1,0 +1,75 @@
+version: "3.9"
+services:
+  telegram_app:
+    container_name: telegram_app
+    restart: always
+    volumes:
+      - .:/telegram_app
+      - static_volume:/telegram_app/static
+    image: telegram_app:latest
+    build: .
+    env_file:
+      - .env.example
+    ports:
+      - "8000:8000"
+    depends_on:
+      - telegram_db
+      - telegram_redis_host
+    networks:
+      - telegram_network
+
+  telegram_redis_host:
+    container_name: telegram_redis_host
+    image: "redis:7-alpine"
+    env_file:
+      - .env.example
+    expose:
+      - "6379"
+    restart: always
+    networks:
+      - telegram_network
+
+  telegram_db:
+    container_name: telegram_db
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: telegram_password
+      POSTGRES_DB: telegram_database
+    volumes:
+      - telegram_db_data:/var/lib/postgresql/data
+    networks:
+      - telegram_network
+
+  celery_worker:
+    container_name: telegram_celery_worker
+    image: telegram_app:latest
+    command: celery -A config worker --loglevel=info
+    restart: always
+    depends_on:
+      - telegram_app
+      - telegram_redis_host
+    env_file:
+      - .env.example
+    networks:
+      - telegram_network
+
+  celery_beat:
+    container_name: telegram_celery_beat
+    image: telegram_app:latest
+    command: celery -A config beat --loglevel=info
+    restart: always
+    depends_on:
+      - telegram_app
+      - telegram_redis_host
+    env_file:
+      - .env.example
+    networks:
+      - telegram_network
+
+networks:
+  telegram_network:
+
+volumes:
+  telegram_db_data:
+  static_volume:
