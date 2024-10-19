@@ -23,7 +23,7 @@ sys.path.append(os.path.join(BASE_DIR, 'apps'))
 
 SECRET_KEY = "django-insecure-h+hioiqdj&dwja1h$@12=s8ra9zw%$-$!9txds$bh^ask+0iij"
 
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "debug_toolbar",
 
     'rest_framework',
     'rest_framework_simplejwt',
