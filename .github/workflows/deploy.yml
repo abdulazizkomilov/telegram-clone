@@ -47,6 +47,7 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" << 'EOF'
           cd ~/telegram-clone
+          git pull
           docker-compose down --remove-orphans
           docker system prune -af --volumes
           docker-compose pull $REGISTRY/${{ secrets.DOCKER_IMAGE }}:latest
