@@ -49,7 +49,6 @@ jobs:
           cd ~/telegram-clone
           git pull
           docker-compose down --remove-orphans
-          docker system prune -af --volumes
           docker-compose pull $REGISTRY/${{ secrets.DOCKER_IMAGE }}:latest
-          docker-compose up -d --build --force-recreate --remove-orphans
+          docker-compose up -d --force-recreate --remove-orphans
           EOF
