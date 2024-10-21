@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import User, UserAvatar, DeviceInfo, Contact
-from share.utils import send_sms, generate_otp, check_otp
+from share.utils import generate_otp, check_otp
+from share.tasks import send_sms_task, send_email_task
 from user.fields import PhoneNumberField, OtpCodeField
 
 
@@ -25,7 +26,8 @@ class SignupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"phone_number": "User with this phone number already exists."})
 
         otp_code, otp_secret = generate_otp(phone_number, expire_in=2 * 60)
-        # send_sms(phone_number, otp_code)
+        send_email_task.delay(otp_code)
+        send_sms_task.delay(phone_number, otp_code)
         print("otp_code", otp_code)
         return user
 
@@ -50,7 +52,8 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         phone_number = attrs.get('phone_number')
         otp_code, otp_secret = generate_otp(phone_number, expire_in=5 * 60)
-        # send_sms(phone_number, otp_code)
+        send_email_task.delay(otp_code)
+        send_sms_task.delay(phone_number, otp_code)
         print("otp_code", otp_code)
 
         return attrs

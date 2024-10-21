@@ -83,6 +83,7 @@ def send_email(email, otp_code):
         email.send(fail_silently=False)
         return 200
     except Exception as e:
+        print(e)
         return 400
 
 

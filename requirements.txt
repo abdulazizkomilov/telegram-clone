@@ -13,6 +13,7 @@ drf-spectacular==0.27.2
 pillow==10.4.0
 python-dateutil==2.9.0.post0
 python-decouple==3.8
+psycopg2-binary==2.9.9
 redis==5.1.1
 requests==2.31.0
 sentry-sdk
@@ -21,3 +22,4 @@ firebase-admin
 gunicorn
 cryptography
 uvicorn
+twilio
