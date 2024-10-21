@@ -14,3 +14,13 @@ class BaseEnum(Enum):
 class TokenType(str, Enum):
     ACCESS = "access"
     REFRESH = "refresh"
+
+
+class ChannelType(BaseEnum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+
+
+class ChannelMembershipType(BaseEnum):
+    ADMIN = "admin"
+    MEMBER = "member"
