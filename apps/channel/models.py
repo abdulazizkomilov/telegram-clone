@@ -32,6 +32,17 @@ class ChannelMessage(BaseModel):
     text = models.TextField(blank=True, null=True)
     media = models.FileField(upload_to='channel_uploads/', blank=True, null=True)
     file = models.FileField(upload_to='channel_uploads/', blank=True, null=True)
+    likes = models.ManyToManyField(User, related_name='channel_liked_messages', blank=True)
 
     def __str__(self):
         return f"Message from {self.user.username} in {self.channel.name}"
+
+
+class ChannelScheduledMessage(BaseModel):
+    channel = models.ForeignKey(Channel, on_delete=models.CASCADE)
+    sender = models.ForeignKey(User, on_delete=models.CASCADE)
+    text = models.TextField(blank=True, null=True)
+    media = models.FileField(upload_to='channel_uploads/', blank=True, null=True)
+    file = models.FileField(upload_to='channel_uploads/', blank=True, null=True)
+    scheduled_time = models.DateTimeField()
+    sent = models.BooleanField(default=False)

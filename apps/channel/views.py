@@ -3,10 +3,12 @@ from rest_framework import generics, permissions, status, exceptions
 from rest_framework.response import Response
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.utils.timezone import now
 
-from .models import Channel, ChannelMembership, ChannelMessage
+from .models import Channel, ChannelMembership, ChannelMessage, ChannelScheduledMessage
 from .serializers import ChannelSerializer, ChannelMembershipSerializer, ChannelMessageSerializer, \
-    ChannelMembershipUpdateSerializer
+    ChannelMembershipUpdateSerializer, ChannelScheduledMessageSerializer
+from .permissions import IsChannelOwnerOrReadOnly
 
 
 class ChannelListCreateView(generics.ListCreateAPIView):
@@ -117,3 +119,99 @@ class ChannelMembershipUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         membership = self.get_object()
         membership.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ChannelMessageListCreateView(generics.ListCreateAPIView):
+    """
+    Channel owner can create messages. All members can list messages.
+    """
+    serializer_class = ChannelMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'post']
+
+    def get_queryset(self):
+        channel = get_object_or_404(Channel, id=self.kwargs['pk'])
+        return channel.messages.all()
+
+    def perform_create(self, serializer):
+        channel = get_object_or_404(Channel, id=self.kwargs['pk'])
+
+        if channel.owner != self.request.user:
+            raise exceptions.PermissionDenied("Only the owner can create messages.")
+
+        message = serializer.save(user=self.request.user, channel=channel)
+
+        # notification to channel members
+
+
+class ChannelMessageDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    Channel owners can read, update, and delete messages.
+    """
+    serializer_class = ChannelMessageSerializer
+    permission_classes = [permissions.IsAuthenticated, IsChannelOwnerOrReadOnly]
+    http_method_names = ['get', 'patch', 'delete']
+
+    def get_queryset(self):
+        return ChannelMessage.objects.filter(channel__id=self.kwargs['pk'])
+
+
+class LikeMessageView(generics.GenericAPIView):
+    """
+    Channel members can like and unlike messages.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk, message_id):
+        channel = get_object_or_404(Channel, id=pk)
+        message = get_object_or_404(ChannelMessage, id=message_id, channel=channel)
+
+        message.likes.add(request.user)
+        return Response({"detail": "Message liked."}, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk, message_id):
+        channel = get_object_or_404(Channel, id=pk)
+        message = get_object_or_404(ChannelMessage, id=message_id, channel=channel)
+
+        message.likes.remove(request.user)
+        return Response({"detail": "Like removed."}, status=status.HTTP_200_OK)
+
+
+class CreateScheduledMessageView(generics.CreateAPIView):
+    queryset = ChannelScheduledMessage.objects.all()
+    serializer_class = ChannelScheduledMessageSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        """
+        Ensure the user is the owner of the channel or has the right permissions
+        before creating a scheduled message.
+        """
+        channel_id = self.kwargs['pk']
+        try:
+            channel = Channel.objects.get(id=channel_id)
+        except Channel.DoesNotExist:
+            return Response(
+                {"detail": "Channel not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if channel.owner != self.request.user:
+            return Response(
+                {"detail": "You are not authorized to schedule messages for this channel."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        serializer.save(sender=self.request.user, channel=channel, scheduled_time=now().isoformat())
+
+    def post(self, request, *args, **kwargs):
+        """
+        Add validation to ensure the scheduled time is not in the past.
+        """
+        scheduled_time = request.data.get('scheduled_time')
+        if scheduled_time and scheduled_time <= now().isoformat():
+            return Response(
+                {"detail": "Scheduled time must be in the future."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return super().post(request, *args, **kwargs)

@@ -269,6 +269,10 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'group.tasks.send_group_scheduled_message',
         'schedule': 10.0,
     },
+    'send-channel-scheduled-message': {
+        'task': 'channel.tasks.send_channel_scheduled_message',
+        'schedule': 10.0,
+    },
 }
 
 EMAIL_BACKEND = config('EMAIL_BACKEND', default='')
