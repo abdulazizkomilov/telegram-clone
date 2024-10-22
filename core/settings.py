@@ -44,9 +44,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "django_celery_beat",
 
-    "chat",
-    "share",
     "user",
+    "share",
+    "chat",
     "group",
     "channel",
 ]

@@ -9,7 +9,7 @@ class Channel(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     channel_type = models.CharField(max_length=10, choices=ChannelType.choices(), default=ChannelType.PUBLIC)
-    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='owned_channels')
+    owner = models.ForeignKey(User, on_delete=models.CASCADE)
 
     def __str__(self):
         return self.name
