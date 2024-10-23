@@ -110,4 +110,7 @@ reports
 tests/.pytest_cache
 .pytest_cache
 logs
+celerybeat-schedule
 celerybeat-schedule.db
+*.db
+need.txt
