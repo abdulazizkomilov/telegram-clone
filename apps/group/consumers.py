@@ -108,11 +108,16 @@ class GroupChatConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
             user = await self.get_user(member_data['id'])
 
             if not user.is_online:
-                send_push_notification.delay(
-                    token=user.id,
-                    title="New Message in Group",
-                    body=message.text
-                )
+                try:
+                    user_notification_pref = getattr(user, 'notification_preference', None)
+                    if user_notification_pref and user_notification_pref.notifications_enabled:
+                        send_push_notification.delay(
+                            token=user_notification_pref.device_token,
+                            title="New Message in Group",
+                            body=message.text
+                        )
+                except Exception as e:
+                    print(f"Error: {e}")
 
         await self.channel_layer.group_send(
             f'group__{pk}',

@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "channels",
     "corsheaders",
     "django_celery_beat",
+    # "django_elasticsearch_dsl",
 
     "user",
     "share",
@@ -89,7 +90,7 @@ ASGI_APPLICATION = 'core.asgi.application'
 
 # Database
 
-if config('DEBUG', default=False, cast=bool):
+if DEBUG:
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -284,3 +285,15 @@ EMAIL_USE_TLS = config('EMAIL_USE_TLS', default='')
 EMAIL_PORT = config('EMAIL_PORT', default='')
 EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+
+# ELASTICSEARCH_DSL = {
+#     "default": {
+#         "hosts": "http://localhost:9200"
+#     },
+# }
+
+# ELASTICSEARCH_DSL_SIGNAL_PROCESSOR = "django_elasticsearch_dsl.signals.RealTimeSignalProcessor"
+# ELASTICSEARCH_DSL_INDEX_SETTINGS = {}
+# ELASTICSEARCH_DSL_AUTOSYNC = True
+# ELASTICSEARCH_DSL_AUTO_REFRESH = True
+# ELASTICSEARCH_DSL_PARALLEL = False

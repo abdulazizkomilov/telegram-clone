@@ -17,11 +17,15 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # Set the working directory
 WORKDIR /telegram_app
 
-# Copy project files
-COPY . /telegram_app/
+# Copy only the requirements file first, before copying the rest of the app
+COPY requirements.txt /telegram_app/
 
-# Install Python dependencies in the virtual environment
-RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+# Install Python dependencies in the virtual environment (cached layer)
+RUN pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the project files
+COPY . /telegram_app/
 
 # Copy entrypoint script and make it executable
 COPY .deploy/entrypoint.sh /

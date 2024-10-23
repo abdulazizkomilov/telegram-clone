@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, UserAvatar, DeviceInfo, Contact
+from .models import User, UserAvatar, DeviceInfo, Contact, NotificationPreference
 from share.utils import generate_otp, check_otp
 from share.tasks import send_sms_task, send_email_task
 from user.fields import PhoneNumberField, OtpCodeField
@@ -128,3 +128,9 @@ class Enable2FASerializer(serializers.Serializer):
 class Verify2FASerializer(serializers.Serializer):
     user_id = serializers.UUIDField()
     password = serializers.CharField()
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotificationPreference
+        fields = ['id', 'notifications_enabled', 'device_token']

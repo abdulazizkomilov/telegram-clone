@@ -94,3 +94,12 @@ class Contact(BaseModel):
         db_table = "contact"
         verbose_name = "Contact"
         ordering = ['-added_at']
+
+
+class NotificationPreference(BaseModel):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preference')
+    notifications_enabled = models.BooleanField(default=False)
+    device_token = models.CharField(max_length=555, blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.user.username} Notifications: {'Enabled' if self.notifications_enabled else 'Disabled'}, Token: {self.device_token or 'None'}"

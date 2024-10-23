@@ -15,6 +15,7 @@ urlpatterns = [
     path("", health_check),
     path("api/", include(
         [
+            path("", include("share.urls")),
             path("users/", include("user.urls")),
             path("chats/", include("chat.urls")),
             path("groups/", include("group.urls")),

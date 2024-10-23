@@ -12,9 +12,9 @@ from core import settings
 
 from .serializers import SignupSerializer, VerifyOTPSerializer, LoginSerializer, UserProfileSerializer, \
     UserAvatarSerializer, DeviceInfoSerializer, ContactSerializer, ContactSyncSerializer, Enable2FASerializer, \
-    Verify2FASerializer
+    Verify2FASerializer, NotificationPreferenceSerializer
 from .services import UserService
-from .models import User, UserAvatar, DeviceInfo, Contact
+from .models import User, UserAvatar, DeviceInfo, Contact, NotificationPreference
 from share.throttles import Throttle
 
 redis_conn = get_redis_connection("default")
@@ -305,3 +305,20 @@ class UserStatusView(generics.GenericAPIView):
                 "last_seen": user.last_seen,
             })
         return Response({"error": "User not found"}, status=404)
+
+
+class NotificationPreferenceView(generics.RetrieveUpdateAPIView):
+    serializer_class = NotificationPreferenceSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    http_method_names = ['get', 'patch']
+
+    def get_object(self):
+        obj, created = NotificationPreference.objects.get_or_create(user=self.request.user)
+        return obj
+
+    def patch(self, request, *args, **kwargs):
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)

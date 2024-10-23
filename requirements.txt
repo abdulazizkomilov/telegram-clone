@@ -23,3 +23,4 @@ gunicorn
 cryptography
 uvicorn
 twilio
+django-elasticsearch-dsl==8.0

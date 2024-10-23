@@ -33,11 +33,17 @@ def send_channel_scheduled_message():
             scheduled_message.sent = True
             scheduled_message.save()
 
-            # notification to channel members
             for membership in scheduled_message.channel.memberships.all():
-                send_push_notification.delay(membership.user.id, f"New Message in {scheduled_message.channel.name}",
-                                             message.text)
+                try:
+                    user_notification_pref = getattr(membership.user, 'notification_preference', None)
 
-            logger.info(f"Message sent: {message.text}")
+                    if user_notification_pref and user_notification_pref.notifications_enabled:
+                        send_push_notification.delay(
+                            user_notification_pref.device_token,
+                            f"New Message in {scheduled_message.channel.name}",
+                            message.text
+                        )
+                except Exception as e:
+                    logger.error(f"Error in send_scheduled_message task: {str(e)}")
     except Exception as e:
         logger.error(f"Error in send_scheduled_message task: {str(e)}")
