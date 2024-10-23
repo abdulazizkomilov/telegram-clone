@@ -9,6 +9,7 @@ from .models import Channel, ChannelMembership, ChannelMessage, ChannelScheduled
 from .serializers import ChannelSerializer, ChannelMembershipSerializer, ChannelMessageSerializer, \
     ChannelMembershipUpdateSerializer, ChannelScheduledMessageSerializer
 from .permissions import IsChannelOwnerOrReadOnly
+from share.tasks import send_push_notification
 
 
 class ChannelListCreateView(generics.ListCreateAPIView):
@@ -142,6 +143,9 @@ class ChannelMessageListCreateView(generics.ListCreateAPIView):
         message = serializer.save(user=self.request.user, channel=channel)
 
         # notification to channel members
+        for membership in channel.memberships.all():
+            if membership.user != self.request.user:
+                send_push_notification.delay(membership.user.id, f"New Message in {channel.name}", message.text)
 
 
 class ChannelMessageDetailView(generics.RetrieveUpdateDestroyAPIView):

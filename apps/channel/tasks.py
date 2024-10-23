@@ -3,7 +3,7 @@ from .models import ChannelScheduledMessage, ChannelMessage
 from django.utils import timezone
 from celery.utils.log import get_task_logger
 
-from .serializers import ChannelMessageSerializer
+from share.tasks import send_push_notification
 
 logger = get_task_logger(__name__)
 
@@ -33,11 +33,10 @@ def send_channel_scheduled_message():
             scheduled_message.sent = True
             scheduled_message.save()
 
-            logger.info(f"Message sent: {message.text}")
-
-            serializer = ChannelMessageSerializer(message)
-
             # notification to channel members
+            for membership in scheduled_message.channel.memberships.all():
+                send_push_notification.delay(membership.user.id, f"New Message in {scheduled_message.channel.name}",
+                                             message.text)
 
             logger.info(f"Message sent: {message.text}")
     except Exception as e:
