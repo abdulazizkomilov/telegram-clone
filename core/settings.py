@@ -23,7 +23,7 @@ sys.path.append(os.path.join(BASE_DIR, 'apps'))
 
 SECRET_KEY = config('SECRET_KEY', default='hjg^&%**%%^*GHVGJHGKJGKH')
 
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
