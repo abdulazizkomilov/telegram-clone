@@ -15,6 +15,7 @@ python-dateutil==2.9.0.post0
 python-decouple==3.8
 psycopg2-binary==2.9.9
 redis==5.1.1
+whitenoise==6.7.0
 requests==2.31.0
 fcm-django
 firebase-admin

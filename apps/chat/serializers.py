@@ -2,6 +2,7 @@ from rest_framework import serializers
 from core.settings import SITE_HOST
 from .models import Chat, ChatParticipant, Message, ScheduledMessage
 from user.serializers import UserSerializer
+from user.models import User
 
 
 class ChatParticipantSerializer(serializers.ModelSerializer):
@@ -26,8 +27,8 @@ class ChatCreateSerializer(serializers.ModelSerializer):
     participants = ChatParticipantSerializer(many=True, read_only=True)
     owner = UserSerializer(read_only=True)
     user = UserSerializer(read_only=True)
-    owner_id = serializers.UUIDField(source='owner.id', write_only=True)
-    user_id = serializers.UUIDField(source='user.id', write_only=True)
+    owner_id = serializers.UUIDField(write_only=True)
+    user_id = serializers.UUIDField(write_only=True)
 
     class Meta:
         model = Chat
