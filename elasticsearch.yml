@@ -1,0 +1,4 @@
+cluster.name: "ecommerce-elasticsearch"
+network.host: 0.0.0.0
+xpack.security.enabled: false
+http.port: 9200
