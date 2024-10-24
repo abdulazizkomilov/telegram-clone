@@ -40,3 +40,14 @@ if settings.ENABLE_ES:
         class Django:
             model = Channel
             fields = ['name', 'description']
+else:
+    class UserIndex:
+        pass
+
+
+    class GroupIndex:
+        pass
+
+
+    class ChannelIndex:
+        pass

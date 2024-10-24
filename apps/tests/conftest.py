@@ -3,8 +3,15 @@ import pytest
 from faker import Faker
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+from core import settings
+from pytest_factoryboy import register
 
 fake = Faker()
+
+if "user" in settings.INSTALLED_APPS:
+    from tests.factories.user_factory import UserFactory
+
+    register(UserFactory)
 
 
 @pytest.fixture
