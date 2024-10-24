@@ -13,7 +13,7 @@ drf-spectacular==0.27.2
 pillow==10.4.0
 python-dateutil==2.9.0.post0
 python-decouple==3.8
-psycopg2-binary==2.9.9
+psycopg2-binary==2.9.10
 redis==5.1.1
 whitenoise==6.7.0
 requests==2.31.0
@@ -25,3 +25,12 @@ cryptography
 uvicorn
 twilio
 django-elasticsearch-dsl==8.0
+pytest==8.2.1
+pytest-order==1.3.0
+pytest-json-report==1.5.0
+factory-boy==3.3.0
+pytest-factoryboy==2.7.0
+pytest-mock==3.14.0
+Faker==25.9.2
+fakeredis==2.23.3
+pytest-django
