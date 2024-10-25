@@ -134,20 +134,22 @@ def verify_otp_data(request, fake_number, user_factory):
     ],
     indirect=True,
 )
-def test_verify_otp(
-        verify_otp_data, api_client, mocker
-):
+def test_verify_otp(verify_otp_data, api_client, mocker):
     client = api_client()
     return_data = verify_otp_data()
 
     phone_number, status_code = return_data["phone_number"], return_data["status_code"]
-    print("phone_number", phone_number)
-    print("status_code", status_code)
-    print("req_json", return_data["req_json"])
+
     redis_conn = mocker.Mock()
     mocker.patch('user.views.redis_conn', redis_conn)
     mocker.patch('share.utils.redis_conn', redis_conn)
+
     mocker.patch('user.serializers.check_otp', side_effect=return_data["check_otp_exception"])
+
+    mock_create_tokens = mocker.patch('user.views.UserService.create_tokens', return_value={
+        'access': 'fake-access-token',
+        'refresh': 'fake-refresh-token'
+    })
 
     resp = client.patch(
         f'/api/users/verify/{return_data["otp_secret"]}/',
@@ -162,4 +164,6 @@ def test_verify_otp(
         assert sorted(resp_json.keys()) == sorted(['access', 'refresh'])
 
         user = User.objects.get(phone_number=phone_number)
+        mock_create_tokens.assert_called_once_with(user)
+
         assert user.is_verified

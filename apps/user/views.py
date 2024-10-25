@@ -15,7 +15,7 @@ from .serializers import SignupSerializer, VerifyOTPSerializer, LoginSerializer,
     Verify2FASerializer, NotificationPreferenceSerializer
 from .services import UserService
 from .models import User, UserAvatar, DeviceInfo, Contact, NotificationPreference
-from share.throttles import Throttle
+# from share.throttles import Throttle
 
 redis_conn = get_redis_connection("default")
 
