@@ -23,7 +23,7 @@ redis_conn = get_redis_connection("default")
 class SignupView(generics.CreateAPIView):
     serializer_class = SignupSerializer
     permission_classes = [permissions.AllowAny]
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

@@ -13,38 +13,25 @@ def signup_data(request, user_factory, mocker):
         redis_conn = mocker.Mock()
         redis_conn.exists.return_value = False
         redis_conn.get.return_value = b'123111'
-
         return 201, redis_conn, req_json
 
     def phone_number_exists():
         user.is_verified = True
         user.save()
         req_json.update({'phone_number': user.phone_number})
-
-        return (
-            400, None, req_json
-        )
+        return 400, None, req_json
 
     def invalid_phone_number():
         req_json.update({'phone_number': 'invalid'})
-
-        return (
-            400, None, req_json
-        )
+        return 400, None, req_json
 
     def empty_phone_number():
         req_json.update({'phone_number': ''})
-
-        return (
-            400, None, req_json
-        )
+        return 400, None, req_json
 
     def required_phone_number():
         req_json.pop('phone_number')
-
-        return (
-            400, None, req_json
-        )
+        return 400, None, req_json
 
     data = {
         'valid_data': valid_data,
@@ -73,11 +60,7 @@ def test_signup(signup_data, api_client, mocker):
     status_code, redis_conn, req_json = signup_data
 
     mocker.patch('user.views.redis_conn', redis_conn)
-
-    mocker.patch(
-        'user.serializers.generate_otp',
-        return_value=('123456', '1v8z0Of5sJ0XI3cpNcHWrofrHZfY0oGJZbvGW4siTs0')
-    )
+    mocker.patch('share.utils.redis_conn', redis_conn)
 
     resp = client.post('/api/users/register/', data=req_json, format='json')
 
@@ -85,7 +68,6 @@ def test_signup(signup_data, api_client, mocker):
 
     if status_code == 201:
         resp_json = resp.json()
-
         assert sorted(resp_json.keys()) == sorted(['phone_number', 'otp_secret'])
 
         user = User.objects.get(phone_number=req_json['phone_number'])
