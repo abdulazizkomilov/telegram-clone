@@ -62,6 +62,9 @@ def test_signup(signup_data, api_client, mocker):
     mocker.patch('user.views.redis_conn', redis_conn)
     mocker.patch('share.utils.redis_conn', redis_conn)
 
+    mocker.patch('user.serializers.send_sms_task', return_value=None)
+    mocker.patch('user.serializers.send_email_task', return_value=None)
+
     resp = client.post('/api/users/register/', data=req_json, format='json')
 
     assert resp.status_code == status_code

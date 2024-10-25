@@ -26,8 +26,8 @@ class SignupSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"phone_number": "User with this phone number already exists."})
 
         otp_code, otp_secret = generate_otp(phone_number, expire_in=2 * 60)
-        # send_email_task.delay(otp_code)
-        # send_sms_task.delay(phone_number, otp_code)
+        send_email_task.delay(otp_code)
+        send_sms_task.delay(phone_number, otp_code)
         print("otp_code", otp_code)
         return user
 
