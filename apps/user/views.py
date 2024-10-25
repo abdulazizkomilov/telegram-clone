@@ -44,7 +44,7 @@ class VerifyView(generics.UpdateAPIView):
     permission_classes = [permissions.AllowAny]
     http_method_names = ['patch']
     authentication_classes = []
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def patch(self, request, *args, **kwargs):
         otp_secret = kwargs.get('otp_secret')
@@ -76,7 +76,7 @@ class LoginView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     http_method_names = ['post']
     authentication_classes = []
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def post(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
@@ -93,7 +93,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ['get', 'patch']
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_object(self):
         return self.request.user
@@ -102,7 +102,7 @@ class UserProfileView(generics.RetrieveUpdateAPIView):
 class UserAvatarUploadView(generics.ListCreateAPIView):
     serializer_class = UserAvatarSerializer
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_queryset(self):
         return UserAvatar.objects.filter(user=self.request.user)
@@ -113,7 +113,7 @@ class UserAvatarUploadView(generics.ListCreateAPIView):
 
 class UserAvatarRetrieveDestroy(generics.RetrieveDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -136,7 +136,7 @@ class UserAvatarRetrieveDestroy(generics.RetrieveDestroyAPIView):
 
 class LogoutView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     @extend_schema(responses=None)
     def post(self, request, *args, **kwargs):
@@ -158,7 +158,7 @@ class LogoutView(generics.GenericAPIView):
 class DeviceListView(generics.ListAPIView):
     serializer_class = DeviceInfoSerializer
     permission_classes = [permissions.IsAuthenticated]
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_queryset(self):
         return DeviceInfo.objects.filter(user=self.request.user)
@@ -167,7 +167,7 @@ class DeviceListView(generics.ListAPIView):
 class ContactListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ContactSerializer
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)
@@ -179,7 +179,7 @@ class ContactListCreateView(generics.ListCreateAPIView):
 class ContactDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Contact.objects.all()
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)
@@ -193,7 +193,7 @@ class ContactSyncView(generics.CreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ContactSyncSerializer
     pagination_class = None
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def create(self, request, *args, **kwargs) -> Response:
         contacts = request.data
@@ -245,7 +245,7 @@ class ContactSyncView(generics.CreateAPIView):
 class Enable2FAView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = Enable2FASerializer
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def post(self, request):
         user = request.user
@@ -273,7 +273,7 @@ class Enable2FAView(generics.GenericAPIView):
 class Verify2FAView(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = Verify2FASerializer
-    throttle_classes = [Throttle]
+    # throttle_classes = [Throttle]
 
     def post(self, request):
         serializer = self.get_serializer(data=request.data)
