@@ -74,6 +74,21 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = ['id', 'phone_number', 'user_name', 'bio', 'birth_date', 'first_name', 'last_name']
         read_only_fields = ['id', 'user', 'phone_number']
 
+    def validate(self, attrs):
+        """Check if the user_name is unique only when provided."""
+        user_name = attrs.get('user_name')
+
+        # Skip validation if user_name is not being updated
+        if user_name is not None:
+            if not user_name.strip():
+                raise serializers.ValidationError({"user_name": "User name cannot be empty."})
+
+            # Ensure the username is unique, excluding the current user
+            if User.objects.filter(user_name=user_name).exclude(id=self.instance.id).exists():
+                raise serializers.ValidationError({"user_name": "User with this user name already exists."})
+
+        return attrs
+
 
 class UserAvatarSerializer(serializers.ModelSerializer):
     class Meta:

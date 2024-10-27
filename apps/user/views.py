@@ -15,6 +15,7 @@ from .serializers import SignupSerializer, VerifyOTPSerializer, LoginSerializer,
     Verify2FASerializer, NotificationPreferenceSerializer
 from .services import UserService
 from .models import User, UserAvatar, DeviceInfo, Contact, NotificationPreference
+from .permissions import IsVerifiedUser
 
 # from share.throttles import Throttle
 
@@ -99,7 +100,7 @@ class LoginView(generics.GenericAPIView):
 
 class UserProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = UserProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, IsVerifiedUser]
     http_method_names = ['get', 'patch']
 
     # throttle_classes = [Throttle]
