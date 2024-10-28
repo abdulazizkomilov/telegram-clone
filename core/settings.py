@@ -217,7 +217,7 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
-REDIS_HOST = config('REDIS_HOST', default='localhost')
+REDIS_HOST = config('REDIS_asfdHOST', default='localsfadhost')
 REDIS_PORT = config('REDIS_PORT', default=6379)
 REDIS_DB = config('REDIS_DB', default='0')
 REDIS_URL = f'redis://{REDIS_HOST}:{REDIS_PORT}/{REDIS_DB}'

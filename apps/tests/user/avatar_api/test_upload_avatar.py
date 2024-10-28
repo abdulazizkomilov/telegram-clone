@@ -59,11 +59,11 @@ def sample_avatar_file():
         ("delete", lambda avatar: AVATAR_DETAIL_URL(avatar.id), status.HTTP_204_NO_CONTENT),
     ],
 )
-def test_avatar_operations(api_client, tokens, user_with_avatar, method, url_func, expected_status):
+def test_avatar_operations(api_client, user_with_avatar, method, url_func, expected_status):
     """Test retrieving or deleting a user's avatar with valid authentication."""
     user, avatar = user_with_avatar
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = getattr(client, method)(url_func(avatar))
 
@@ -89,11 +89,11 @@ def test_avatar_unauthenticated(api_client, user_with_avatar, method, expected_s
 
 
 @pytest.mark.django_db
-def test_upload_avatar(api_client, tokens, user_factory, sample_avatar_file):
+def test_upload_avatar(api_client, user_factory, sample_avatar_file):
     """Test that a user can upload an avatar."""
     user = user_factory.create()
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = client.post(
         AVATAR_UPLOAD_URL, {"avatar": sample_avatar_file}, format="multipart"
@@ -106,11 +106,11 @@ def test_upload_avatar(api_client, tokens, user_factory, sample_avatar_file):
 
 
 @pytest.mark.django_db
-def test_get_user_avatars(api_client, tokens, user_with_avatar):
+def test_get_user_avatars(api_client, user_with_avatar):
     """Test retrieving a list of user avatars."""
     user, _ = user_with_avatar
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = client.get(AVATAR_UPLOAD_URL)
 

@@ -25,10 +25,11 @@ def contact(user, friend):
 
 
 @pytest.mark.django_db
-def test_list_contacts(api_client, tokens, contact):
+def test_list_contacts(api_client, contact):
     """Test listing contacts for the authenticated user."""
-    access, _ = tokens(contact.user)
-    client = api_client(access)
+
+    client = api_client()
+    client.force_authenticate(user=contact.user)
 
     response = client.get(CONTACT_LIST_CREATE_URL)
     assert response.status_code == status.HTTP_200_OK
@@ -41,8 +42,8 @@ def test_list_contacts(api_client, tokens, contact):
 def test_create_contact(api_client, tokens, user, friend):
     """Test creating a new contact."""
 
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     data = {
         "first_name": "New",
@@ -61,8 +62,8 @@ def test_create_contact(api_client, tokens, user, friend):
 def test_delete_contact(api_client, tokens, contact):
     """Test deleting a contact."""
     user = contact.user
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = client.delete(CONTACT_DELETE_URL(contact.id))
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -73,8 +74,9 @@ def test_delete_contact(api_client, tokens, contact):
 def test_delete_contact_not_owned(api_client, tokens, user_factory, contact):
     """Test that a user cannot delete a contact they don't own."""
     other_user = user_factory.create(username="otheruser", phone_number="+998927654321")
-    access, _ = tokens(other_user)
-    client = api_client(access)
+
+    client = api_client()
+    client.force_authenticate(user=other_user)
 
     response = client.delete(CONTACT_DELETE_URL(contact.id))
     assert response.status_code == status.HTTP_404_NOT_FOUND
@@ -84,8 +86,8 @@ def test_delete_contact_not_owned(api_client, tokens, user_factory, contact):
 def test_sync_contacts(api_client, tokens, user, friend):
     """Test syncing contacts."""
 
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     data = [
         {"phone_number": friend.phone_number, "first_name": friend.first_name, "last_name": friend.last_name},

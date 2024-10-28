@@ -40,11 +40,11 @@ def unverified_user_data(user_factory):
         ("unverified_user_data", status.HTTP_403_FORBIDDEN, None),
     ],
 )
-def test_user_profile_retrieve(api_client, tokens, request, user_fixture, expected_status, expected_response_keys):
+def test_user_profile_retrieve(api_client, request, user_fixture, expected_status, expected_response_keys):
     """Test retrieving profile for both verified and unverified users."""
     user = request.getfixturevalue(user_fixture)
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = client.get(PROFILE_URL)
     assert response.status_code == expected_status
@@ -82,11 +82,11 @@ def test_user_profile_retrieve(api_client, tokens, request, user_fixture, expect
         ),
     ],
 )
-def test_user_profile_update(api_client, tokens, user_profile_data, update_data, expected_status, expected_error):
+def test_user_profile_update(api_client, user_profile_data, update_data, expected_status, expected_error):
     """Test updating profile data."""
     user = user_profile_data
-    access, _ = tokens(user)
-    client = api_client(access)
+    client = api_client()
+    client.force_authenticate(user=user)
 
     response = client.patch(PROFILE_URL, data=update_data, format='json')
     assert response.status_code == expected_status
