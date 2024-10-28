@@ -1,6 +1,5 @@
 import hashlib
 
-from django.core.cache import cache
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from django_redis import get_redis_connection
@@ -9,6 +8,7 @@ from drf_spectacular.utils import extend_schema
 from share.services import TokenService
 from share.enums import TokenType
 from core import settings
+from rest_framework.exceptions import ValidationError
 
 from .serializers import SignupSerializer, VerifyOTPSerializer, LoginSerializer, UserProfileSerializer, \
     UserAvatarSerializer, DeviceInfoSerializer, ContactSerializer, ContactSyncSerializer, Enable2FASerializer, \
@@ -62,10 +62,8 @@ class VerifyView(generics.UpdateAPIView):
         user.save()
 
         if user.is_2fa_enabled:
-            cache.set(f'pending_2fa_{user.id}', True, timeout=300)
-
             return Response({
-                "message": "2FA enabled, please verify your password",
+                "detail": "2FA enabled, please verify your password",
                 "user_id": user.id
             }, status=status.HTTP_200_OK)
 
@@ -274,6 +272,13 @@ class Enable2FAView(generics.GenericAPIView):
 
         if enable_2fa:
             otp_secret = serializer.validated_data['otp_secret']
+
+            if not otp_secret:
+                raise ValidationError("OTP secret is required")
+
+            if len(otp_secret) < 8:
+                raise ValidationError("OTP secret must be at least 8 characters long.")
+
             hashed_secret = hashlib.sha1(otp_secret.encode('utf-8')).hexdigest()
             user.otp_secret = hashed_secret
             user.is_2fa_enabled = True
@@ -303,11 +308,11 @@ class Verify2FAView(generics.GenericAPIView):
         try:
             user = User.objects.get(id=user_id)
         except User.DoesNotExist:
-            return Response({"error": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid user"}, status=status.HTTP_400_BAD_REQUEST)
 
         hashed_secret = hashlib.sha1(password.encode('utf-8')).hexdigest()
         if hashed_secret != user.otp_secret:
-            return Response({"error": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Invalid password"}, status=status.HTTP_400_BAD_REQUEST)
 
         tokens = UserService.create_tokens(user)
         return Response(tokens, status=status.HTTP_200_OK)
@@ -323,7 +328,7 @@ class UserStatusView(generics.GenericAPIView):
                 "is_online": user.is_online,
                 "last_seen": user.last_seen,
             })
-        return Response({"error": "User not found"}, status=404)
+        return Response({"detail": "User not found"}, status=404)
 
 
 class NotificationPreferenceView(generics.RetrieveUpdateAPIView):
