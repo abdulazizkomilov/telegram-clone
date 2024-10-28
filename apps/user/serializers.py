@@ -120,7 +120,13 @@ class ContactSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         friend_phone_number = validated_data.pop('phone')
-        friend = User.objects.get(phone_number=friend_phone_number)
+
+        try:
+            friend = User.objects.get(phone_number=friend_phone_number)
+        except User.DoesNotExist:
+            raise serializers.ValidationError(
+                {"phone": [f"User with phone number '{friend_phone_number}' does not exist."]}
+            )
 
         if Contact.objects.filter(user=self.context['request'].user, friend=friend).exists():
             raise serializers.ValidationError({"friend": [f"You already have {friend.phone_number} as a contact."]})
