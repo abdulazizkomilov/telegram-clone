@@ -322,13 +322,13 @@ class UserStatusView(generics.GenericAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, user_id):
-        user = User.objects.filter(id=user_id).first()
+        user = User.objects.filter(id=user_id, is_verified=True).first()
         if user:
             return Response({
                 "is_online": user.is_online,
                 "last_seen": user.last_seen,
             })
-        return Response({"detail": "User not found"}, status=404)
+        return Response({"detail": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class NotificationPreferenceView(generics.RetrieveUpdateAPIView):

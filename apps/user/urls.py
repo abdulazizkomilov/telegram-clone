@@ -15,6 +15,6 @@ urlpatterns = [
     path('contacts/sync/', views.ContactSyncView.as_view(), name='contact-sync'),
     path('2fa/verify/', views.Verify2FAView.as_view(), name='2fa-verify'),
     path('2fa/', views.Enable2FAView.as_view(), name='2fa-enable'),
-    path('status/<uuid:user_id>/', views.UserStatusView.as_view(), name='user-status'),
+    path('<uuid:user_id>/status/', views.UserStatusView.as_view(), name='user-status'),
     path('notifications/', views.NotificationPreferenceView.as_view(), name='notification-preferences'),
 ]
