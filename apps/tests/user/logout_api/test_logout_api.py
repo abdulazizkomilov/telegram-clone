@@ -9,11 +9,11 @@ LOGOUT_URL = "/api/users/logout/"
 
 @pytest.mark.django_db
 @patch.object(TokenService, 'add_token_to_redis')
-def test_logout(mock_add_token, api_client, user_factory):
+def test_logout(mock_add_token, api_client, tokens, user_factory):
     user = user_factory.create()
 
-    client = api_client()
-    client.force_authenticate(user=user)
+    access, _ = tokens(user)
+    client = api_client(access)
 
     response = client.post(LOGOUT_URL)
 
