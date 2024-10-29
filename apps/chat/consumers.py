@@ -230,11 +230,12 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
         valid_keys = {"text", "image", "file"}
         message_data = {key: data.get(key) for key in valid_keys if data.get(key)}
 
-        return Message.objects.create(
+        message = Message.objects.create(
             chat=chat,
             sender=user,
             **message_data
         )
+        return message
 
     @database_sync_to_async
     def get_message(self, message_id):

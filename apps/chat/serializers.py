@@ -59,6 +59,7 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     liked_by = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
+    id = serializers.UUIDField(format='hex', required=False, read_only=True)
 
     class Meta:
         model = Message

@@ -34,3 +34,5 @@ pytest-mock==3.14.0
 Faker==25.9.2
 fakeredis==2.23.3
 pytest-django
+anyio
+pytest-asyncio
