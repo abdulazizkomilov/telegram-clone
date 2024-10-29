@@ -35,6 +35,24 @@ class ChatCreateSerializer(serializers.ModelSerializer):
         fields = ['id', 'owner', 'user', 'created_at', 'participants', 'owner_id', 'user_id']
         read_only_fields = ['id', 'created_at', 'participants']
 
+    def validate(self, attrs):
+        owner_id = attrs.get("owner_id")
+        user_id = attrs.get("user_id")
+
+        if owner_id == user_id:
+            raise serializers.ValidationError("Owner and user cannot be the same.")
+
+        if not User.objects.filter(id=owner_id).exists():
+            raise serializers.ValidationError("Owner does not exist.")
+
+        if not User.objects.filter(id=user_id).exists():
+            raise serializers.ValidationError("User does not exist.")
+
+        if Chat.objects.filter(owner_id=owner_id, user_id=user_id).exists():
+            raise serializers.ValidationError("Chat between these users already exists.")
+
+        return attrs
+
 
 class MessageSerializer(serializers.ModelSerializer):
     chat = ChatSerializer(read_only=True)

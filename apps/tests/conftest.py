@@ -13,6 +13,11 @@ if "user" in settings.INSTALLED_APPS:
 
     register(UserFactory)
 
+if "chat" in settings.INSTALLED_APPS:
+    from tests.factories.chat_factory import ChatFactory
+
+    register(ChatFactory)
+
 
 @pytest.fixture
 def api_client():

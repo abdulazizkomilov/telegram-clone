@@ -3,7 +3,6 @@ from rest_framework.permissions import IsAuthenticated
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 
-from share.permissions import IsOwner
 from .models import Chat, Message
 from .serializers import ChatCreateSerializer, MessageSerializer
 
@@ -18,10 +17,13 @@ class ChatListCreateView(generics.ListCreateAPIView):
 
 
 class ChatView(generics.RetrieveDestroyAPIView):
-    queryset = Chat.objects.all()
     serializer_class = ChatCreateSerializer
-    permission_classes = [IsAuthenticated, IsOwner]
+    permission_classes = [IsAuthenticated]
     http_method_names = ['get', 'delete']
+
+    def get_queryset(self):
+        user = self.request.user
+        return Chat.objects.filter(owner=user) | Chat.objects.filter(user=user)
 
 
 class MessageListCreateView(generics.ListCreateAPIView):
