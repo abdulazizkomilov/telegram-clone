@@ -4,7 +4,7 @@ from datetime import datetime
 from unittest.mock import AsyncMock, patch
 from django.contrib.auth.models import AnonymousUser
 from user.models import User
-from chat.middleware import TokenAuthMiddleware
+from share.middleware import TokenAuthMiddleware
 
 
 @pytest.mark.django_db
@@ -27,7 +27,7 @@ class TestTokenAuthMiddleware:
         return scope
 
     @pytest.mark.asyncio
-    @patch("chat.middleware.get_user", AsyncMock(return_value=AnonymousUser()))
+    @patch("share.middleware.get_user", AsyncMock(return_value=AnonymousUser()))
     async def test_middleware_no_token(self, fake_scope):
         """Test middleware with no token in the query string."""
         middleware = TokenAuthMiddleware(self.mock_asgi_app)
@@ -36,7 +36,7 @@ class TestTokenAuthMiddleware:
         assert isinstance(fake_scope["user"], AnonymousUser), "Expected user to be AnonymousUser."
 
     @pytest.mark.asyncio
-    @patch("chat.middleware.jwt.decode")
+    @patch("share.middleware.jwt.decode")
     @patch("user.models.User.objects.get")
     async def test_valid_token(self, mock_get_user, mock_jwt_decode, valid_token_payload, fake_scope):
         """Test middleware with a valid token."""
@@ -50,7 +50,7 @@ class TestTokenAuthMiddleware:
             "Expected user with ID 1 but got AnonymousUser."
 
     @pytest.mark.asyncio
-    @patch("chat.middleware.jwt.decode", side_effect=jwt.ExpiredSignatureError)
+    @patch("share.middleware.jwt.decode", side_effect=jwt.ExpiredSignatureError)
     async def test_expired_token(self, mock_jwt_decode, fake_scope):
         """Test middleware with an expired token."""
         middleware = TokenAuthMiddleware(self.mock_asgi_app)
@@ -59,7 +59,7 @@ class TestTokenAuthMiddleware:
         assert isinstance(fake_scope["user"], AnonymousUser), "Expected user to be AnonymousUser due to expired token."
 
     @pytest.mark.asyncio
-    @patch("chat.middleware.jwt.decode")
+    @patch("share.middleware.jwt.decode")
     @patch("user.models.User.objects.get", side_effect=User.DoesNotExist)
     async def test_user_not_found(self, mock_get_user, mock_jwt_decode, valid_token_payload, fake_scope):
         """Test middleware when the user is not found in the database."""
