@@ -6,7 +6,6 @@ from djangochannelsrestframework import mixins
 from djangochannelsrestframework.observer.generics import ObserverModelInstanceMixin
 from django.contrib.auth.models import AnonymousUser
 from datetime import timedelta
-from drf_spectacular.utils import extend_schema, OpenApiExample
 from djangochannelsrestframework.observer.generics import action
 
 from .models import Chat, ChatParticipant, Message, ScheduledMessage
@@ -20,10 +19,6 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
     serializer_class = ChatSerializer
     lookup_field = "pk"
 
-    @extend_schema(
-        description="Connect to a chat WebSocket",
-        examples=[OpenApiExample("WebSocket Connection", value={"type": "connect"})]
-    )
     async def connect(self):
         self.user = self.scope.get("user", AnonymousUser())
         self.chat_id = self.scope["url_route"]["kwargs"]["pk"]
@@ -82,22 +77,6 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
             'data': event['message']
         })
 
-    @action()
-    @extend_schema(
-        description="Create a new message in the chat.",
-        request=MessageSerializer,
-        responses={200: MessageSerializer},
-        examples=[
-            OpenApiExample(
-                "Message Payload",
-                value={
-                    "text": "Hello, this is a message.",
-                    "image": None,
-                    "file": None
-                }
-            )
-        ]
-    )
     @action()
     async def create_message(self, pk, data, **kwargs):
         chat = await self.get_chat(pk)

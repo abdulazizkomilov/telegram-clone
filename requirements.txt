@@ -36,3 +36,5 @@ fakeredis==2.23.3
 pytest-django
 anyio
 pytest-asyncio
+PyJWT
+pytest-redis

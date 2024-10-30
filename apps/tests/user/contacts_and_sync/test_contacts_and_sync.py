@@ -9,12 +9,12 @@ CONTACT_SYNC_URL = "/api/users/contacts/sync/"
 
 @pytest.fixture
 def user():
-    return User.objects.create(phone_number="+998987654321")
+    return User.objects.create(phone_number="+998987654001")
 
 
 @pytest.fixture
 def friend():
-    return User.objects.create(phone_number="+998987654322")
+    return User.objects.create(phone_number="+998987654999")
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def test_delete_contact(api_client, tokens, contact):
 @pytest.mark.django_db
 def test_delete_contact_not_owned(api_client, tokens, user_factory, contact):
     """Test that a user cannot delete a contact they don't own."""
-    other_user = user_factory.create(username="otheruser", phone_number="+998927654321")
+    other_user = user_factory.create(username="otheruser", phone_number="+998927654121")
 
     client = api_client()
     client.force_authenticate(user=other_user)
@@ -91,7 +91,7 @@ def test_sync_contacts(api_client, tokens, user, friend):
 
     data = [
         {"phone_number": friend.phone_number, "first_name": friend.first_name, "last_name": friend.last_name},
-        {"phone_number": "+998992345672", "first_name": "Not", "last_name": "Found"},
+        {"phone_number": "+99899234444", "first_name": "Not", "last_name": "Found"},
     ]
 
     response = client.post(CONTACT_SYNC_URL, data, format="json")
@@ -101,5 +101,5 @@ def test_sync_contacts(api_client, tokens, user, friend):
     assert response.data[0]["phone_number"] == friend.phone_number
     assert response.data[0]["status"] == "created"
 
-    assert response.data[1]["phone_number"] == "+998992345672"
+    assert response.data[1]["phone_number"] == "+99899234444"
     assert response.data[1]["status"] == "not found"
