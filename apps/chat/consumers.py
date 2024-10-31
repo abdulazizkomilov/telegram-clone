@@ -50,7 +50,8 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
         await super().disconnect(code)
 
     async def notify_users(self):
-        users = await self.serialize_users(self.participants)
+        participants = await self.current_users(self.chat)
+        users = await self.serialize_users(participants)
         await self.channel_layer.group_send(
             f"chat__{self.chat_id}",
             {"type": "update_users", "users": users}
