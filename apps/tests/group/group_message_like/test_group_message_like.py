@@ -6,8 +6,8 @@ from unittest.mock import patch, AsyncMock
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
-from group.models import GroupPermission
 from group.consumers import GroupConsumer
+from group.models import GroupPermission
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.conf import settings
 from django.urls import path
@@ -75,43 +75,24 @@ class TestGroupConsumer:
         """Generate a JWT token from the payload."""
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
-    async def connect_and_test(self, communicator, expected_connection):
-        """Connect the communicator and verify if it matches the expected outcome."""
-        connected, _ = await communicator.connect()
-        assert connected == expected_connection, f"Expected connection status to be {expected_connection}"
-        return communicator
-
-    @pytest.mark.parametrize(
-        "user_scenario, expected_connection, expected_message",
-        [
-            ("owner", True, None),
-            ("not_member", True, "You are not a member of this group. Please join first.")
-        ]
-    )
     @pytest.mark.asyncio
     @patch('redis.asyncio.client.Redis')
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer, user_scenario,
-                                   expected_connection, expected_message):
+    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
 
-        group_instance, owner, member = await group
+        group_instance, owner, _ = await group
 
-        user_id = None
-        if user_scenario == "owner":
-            user_id = owner.id
-        if user_scenario == "not_member":
-            user_id = member.id
-
-        token_payload = await self.generate_token_payload(user_id)
+        token_payload = await self.generate_token_payload(owner.id)
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
         communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
 
-        communicator = await self.connect_and_test(communicator, expected_connection)
+        connected, _ = await communicator.connect()
+        assert connected, "Connection should succeed with valid token."
 
         messages = await communicator.receive_json_from()
         assert messages['action'] == "get_messages"
@@ -124,37 +105,40 @@ class TestGroupConsumer:
             "pk": str(group_instance.pk),
             "data": {"text": "Hello, group!"}
         }
-
         await communicator.send_json_to(json_data)
         await asyncio.sleep(0.2)
         data = await communicator.receive_json_from()
 
-        if user_scenario == "not_member":
-            assert data['detail'] == expected_message, "Expected 'not a member' message for non-member"
+        like_data = {
+            "action": "like_message",
+            "request_id": "2",
+            "pk": str(group_instance.pk),
+            "message_id": data['data']['id']
+        }
 
-            await database_sync_to_async(group_instance.members.add)(member)
-            await communicator.send_json_to(json_data)
-            await asyncio.sleep(0.2)
-            data = await communicator.receive_json_from()
+        await communicator.send_json_to(like_data)
+        await asyncio.sleep(0.2)
 
-        assert data['action'] == "new_message", "Expected new_message action"
-        assert data['data']['text'] == "Hello, group!"
-        assert data['data']['group']['id'] == str(group_instance.pk)
+        liked_message_data = await communicator.receive_json_from()
+        assert liked_message_data['action'] == "message_liked", "Expected message_liked action"
+        assert liked_message_data['data']['liked_by'][0]['id'] == str(owner.id), "Expected liked_by ID"
+        assert liked_message_data['data']['id'] == data['data']['id'], "Expected message ID"
+        assert liked_message_data['data']['likes_count'] == 1, "Expected 1 like"
 
-        await communicator.disconnect()
+        remove_like_data = {
+            "action": "unlike_message",
+            "request_id": "2",
+            "pk": str(group_instance.pk),
+            "message_id": data['data']['id']
+        }
 
-    @pytest.mark.asyncio
-    async def test_invalid_token(self, group, channel_layer):
-        """Test that connection fails with an invalid token."""
-        invalid_token = "invalid.token.value"
-        group_instance, _, _ = await group
+        await communicator.send_json_to(remove_like_data)
+        await asyncio.sleep(0.2)
 
-        communicator = WebsocketCommunicator(
-            application,
-            f"/ws/groups/{group_instance.pk}/?token={invalid_token}",
-        )
-
-        connected, _ = await communicator.connect()
-        assert not connected, "Connection should not succeed with an invalid token."
+        removed_message_data = await communicator.receive_json_from()
+        assert removed_message_data['action'] == "message_unliked", "Expected message_unliked action"
+        assert removed_message_data['data']['id'] == data['data']['id'], "Expected message ID"
+        assert len(removed_message_data['data']['liked_by']) == 0, "Expected 0"
+        assert removed_message_data['data']['likes_count'] == 0, "Expected 0 likes"
 
         await communicator.disconnect()
