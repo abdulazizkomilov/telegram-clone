@@ -13,7 +13,7 @@ from user.models import User
 from user.serializers import UserSerializer
 
 
-class GroupChatConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
+class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     queryset = Group.objects.all()
     serializer_class = GroupMessageSerializer
     lookup_field = "pk"
