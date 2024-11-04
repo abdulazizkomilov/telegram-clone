@@ -67,6 +67,9 @@ class GroupAddMemberSerializer(serializers.ModelSerializer):
 
 
 class GroupPermissionSerializer(serializers.ModelSerializer):
+    can_send_messages = serializers.BooleanField()
+    can_send_media = serializers.BooleanField()
+
     class Meta:
         model = GroupPermission
         fields = ['can_send_messages', 'can_send_media']
