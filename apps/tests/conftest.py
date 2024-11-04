@@ -1,8 +1,11 @@
 import uuid
 import pytest
 from faker import Faker
+from io import BytesIO
+from PIL import Image
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
+from django.core.files.uploadedfile import SimpleUploadedFile
 from core import settings
 from pytest_factoryboy import register
 
@@ -33,6 +36,22 @@ def api_client():
         return client
 
     return _api_client
+
+
+@pytest.fixture
+def generate_test_image():
+    """Generate a valid image file for testing."""
+    img = Image.new("RGB", (100, 100), color=(255, 0, 0))
+    byte_arr = BytesIO()
+    img.save(byte_arr, format='JPEG')
+    byte_arr.seek(0)
+    return SimpleUploadedFile("test_image.jpg", byte_arr.read(), content_type="image/jpeg")
+
+
+@pytest.fixture
+def generate_test_file():
+    """Generate a valid file for testing."""
+    return SimpleUploadedFile("test_file.txt", b"file_content", content_type="text/plain")
 
 
 @pytest.fixture

@@ -1,20 +1,8 @@
 import pytest
-from io import BytesIO
-from PIL import Image
 from rest_framework import status
 from channels.layers import get_channel_layer
 from unittest.mock import patch, AsyncMock
 from chat.models import Message
-from django.core.files.uploadedfile import SimpleUploadedFile
-
-
-def generate_test_image():
-    """Generate a valid image file for testing."""
-    img = Image.new("RGB", (100, 100), color=(255, 0, 0))  # Create a red image
-    byte_arr = BytesIO()
-    img.save(byte_arr, format='JPEG')
-    byte_arr.seek(0)
-    return SimpleUploadedFile("test_image.jpg", byte_arr.read(), content_type="image/jpeg")
 
 
 @pytest.mark.django_db
@@ -48,7 +36,8 @@ class TestMessageListCreateView:
         assert len(response.data['results']) == 1
         assert response.data['results'][0]['text'] == "Hello!"
 
-    def test_create_message(self, api_client, user_factory, chat_factory, channel_layer):
+    def test_create_message(self, api_client, user_factory, chat_factory, channel_layer, generate_test_image,
+                            generate_test_file):
         """Test that a message is created and group_send is called."""
         user = user_factory.create()
         chat = chat_factory.create(owner=user, user=user)
@@ -56,8 +45,8 @@ class TestMessageListCreateView:
         client = api_client()
         client.force_authenticate(user=user)
 
-        test_image = generate_test_image()
-        test_file = SimpleUploadedFile("test_file.txt", b"file_content", content_type="text/plain")
+        test_image = generate_test_image
+        test_file = generate_test_file
 
         payload = {
             "text": "Message with file and image",
