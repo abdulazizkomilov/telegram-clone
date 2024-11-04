@@ -5,7 +5,7 @@ from unittest.mock import patch, AsyncMock
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
-from chat.consumers import ChatConsumer
+from group.consumers import GroupConsumer
 from channels.routing import ProtocolTypeRouter, URLRouter
 from django.conf import settings
 from django.urls import path
@@ -17,7 +17,7 @@ User = get_user_model()
 application = ProtocolTypeRouter({
     "websocket": JwtAuthMiddlewareStack(
         URLRouter([
-            path("ws/chats/<str:pk>/", ChatConsumer.as_asgi()),
+            path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
         ])
     ),
 })
@@ -36,7 +36,7 @@ def channel_layer(settings):
 
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
-class TestChatConsumer:
+class TestGroupConsumer:
 
     @database_sync_to_async
     def create_user(self, user_factory):
@@ -44,22 +44,22 @@ class TestChatConsumer:
         return user_factory.create()
 
     @database_sync_to_async
-    def create_chat(self, chat_factory, owner, user):
-        """Create a chat using the provided chat factory."""
-        return chat_factory.create(owner=owner, user=user)
+    def create_group(self, group_factory, owner, is_private=False):
+        """Create a group using the provided group factory."""
+        return group_factory.create(owner=owner, is_private=is_private)
 
     @pytest.fixture
-    async def chat(self, user_factory, chat_factory):
-        """Fixture to create a chat instance with participants."""
+    async def group(self, user_factory, group_factory):
+        """Fixture to create a group instance with participants."""
         owner = await self.create_user(user_factory)
-        participant = await self.create_user(user_factory)
-        chat_instance = await self.create_chat(chat_factory, owner, participant)
-        return chat_instance, owner, participant
+        member = await self.create_user(user_factory)
+        group_instance = await self.create_group(group_factory, owner)
+        return group_instance, owner, member
 
-    async def generate_token_payload(self, owner_id):
+    async def generate_token_payload(self, user_id):
         """Generate a JWT payload for the user."""
         return {
-            "user_id": str(owner_id),
+            "user_id": str(user_id),
             "exp": datetime.utcnow() + timedelta(minutes=10),
         }
 
@@ -71,31 +71,39 @@ class TestChatConsumer:
         "user_scenario, expected_connection",
         [
             ("owner", True),
-            ("another_user", False),
+            ("not_member", True),
+            ("another_user_in_private_group", False),
         ]
     )
     @pytest.mark.asyncio
     @patch('redis.asyncio.client.Redis')
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, chat, channel_layer, user_scenario,
+    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer, user_scenario,
                                    expected_connection, user_factory):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
 
-        chat_instance, owner, _ = await chat
+        group_instance, owner, _ = await group
 
+        user_id = None
         if user_scenario == "owner":
             user_id = owner.id
-        else:
+        if user_scenario == "not_member":
             another_user = await self.create_user(user_factory)
             user_id = another_user.id
+        if user_scenario == "another_user_in_private_group":
+            another_user = await self.create_user(user_factory)
+            user_id = another_user.id
+
+            group_instance.is_private = True
+            await database_sync_to_async(group_instance.save)()
 
         token_payload = await self.generate_token_payload(user_id)
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/chats/{chat_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
 
         connected, _ = await communicator.connect()
         assert connected == expected_connection, f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
@@ -103,14 +111,14 @@ class TestChatConsumer:
         await communicator.disconnect()
 
     @pytest.mark.asyncio
-    async def test_invalid_token(self, chat, channel_layer):
+    async def test_invalid_token(self, group, channel_layer):
         """Test that connection fails with an invalid token."""
         invalid_token = "invalid.token.value"
-        chat_instance, _, _ = await chat
+        group_instance, _, _ = await group
 
         communicator = WebsocketCommunicator(
             application,
-            f"/ws/chats/{chat_instance.pk}/?token={invalid_token}",
+            f"/ws/groups/{group_instance.pk}/?token={invalid_token}",
         )
 
         connected, _ = await communicator.connect()

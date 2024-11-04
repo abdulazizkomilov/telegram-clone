@@ -37,7 +37,7 @@ async def test_chat_consumer(tokens, channel_layer):
 
     access, _ = tokens(user1)
 
-    communicator = WebsocketCommunicator(application, f"/ws/chat/{chat.id}/?token={access}")
+    communicator = WebsocketCommunicator(application, f"/ws/chats/{chat.id}/?token={access}")
 
     connected, _ = await communicator.connect()
     assert connected, "WebSocket connection failed."

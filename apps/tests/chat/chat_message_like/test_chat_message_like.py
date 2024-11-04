@@ -71,7 +71,7 @@ class TestChatConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/chat/{chat_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(application, f"/ws/chats/{chat_instance.pk}/?token={token}")
 
         connected, _ = await communicator.connect()
         assert connected, "WebSocket connection failed with a valid token."
@@ -139,7 +139,7 @@ class TestChatConsumer:
 
         communicator = WebsocketCommunicator(
             application,
-            f"/ws/chat/389ac0dc-bf6f-443f-af90-0cff66cff642/?token={invalid_token}",
+            f"/ws/chats/389ac0dc-bf6f-443f-af90-0cff66cff642/?token={invalid_token}",
         )
 
         connected, _ = await communicator.connect()
