@@ -18,6 +18,11 @@ if "chat" in settings.INSTALLED_APPS:
 
     register(ChatFactory)
 
+if "group" in settings.INSTALLED_APPS:
+    from tests.factories.group_factory import GroupFactory
+
+    register(GroupFactory)
+
 
 @pytest.fixture
 def api_client():
