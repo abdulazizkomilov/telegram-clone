@@ -1,7 +1,7 @@
 import pytest
 import jwt
 from datetime import datetime, timedelta
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from channels.db import database_sync_to_async
 from channels.testing import WebsocketCommunicator
 from django.contrib.auth import get_user_model
@@ -50,8 +50,8 @@ class TestGroupConsumer:
         return group_factory.create(owner=owner, is_private=is_private)
 
     @database_sync_to_async
-    def create_group_permission(self, group):
-        """Create a group permission."""
+    def create_group_premission(self, group):
+        """Create a group permission using the provided group factory."""
         return GroupPermission.objects.create(group=group)
 
     @pytest.fixture
@@ -60,21 +60,24 @@ class TestGroupConsumer:
         owner = await self.create_user(user_factory)
         member = await self.create_user(user_factory)
         group_instance = await self.create_group(group_factory, owner)
-        await self.create_group_permission(group_instance)
+        await self.create_group_premission(group_instance)
         return group_instance, owner, member
 
-    async def generate_token(self, user_id):
-        """Generate a JWT token for the user."""
-        payload = {
+    async def generate_token_payload(self, user_id):
+        """Generate a JWT payload for the user."""
+        return {
             "user_id": str(user_id),
             "exp": datetime.utcnow() + timedelta(minutes=10),
         }
+
+    def generate_jwt_token(self, payload):
+        """Generate a JWT token from the payload."""
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
-    async def connect_and_test(self, communicator, expected_connected):
-        """Helper to connect and check WebSocket connection status."""
+    async def connect_and_test(self, communicator, expected_connection):
+        """Connect the communicator and verify if it matches the expected outcome."""
         connected, _ = await communicator.connect()
-        assert connected == expected_connected, f"Expected {'connected' if expected_connected else 'not connected'} status"
+        assert connected == expected_connection, f"Expected connection status to be {expected_connection}"
         return communicator
 
     @pytest.mark.parametrize(
@@ -85,15 +88,26 @@ class TestGroupConsumer:
         ]
     )
     @pytest.mark.asyncio
+    @patch('redis.asyncio.client.Redis')
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, group, user_scenario, expected_connection, expected_message):
+    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer, user_scenario,
+                                   expected_connection, expected_message):
         """Test WebSocket connection based on user scenario."""
+        mock_connection = AsyncMock()
+        mock_redis.return_value = mock_connection
+
         group_instance, owner, member = await group
-        user_id = owner.id if user_scenario == "owner" else member.id
 
-        token = await self.generate_token(user_id)
-        mock_jwt_decode.return_value = {"user_id": str(user_id)}
+        user_id = None
+        if user_scenario == "owner":
+            user_id = owner.id
+        if user_scenario == "not_member":
+            user_id = member.id
 
+        token_payload = await self.generate_token_payload(user_id)
+        mock_jwt_decode.return_value = token_payload
+
+        token = self.generate_jwt_token(token_payload)
         communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
 
         communicator = await self.connect_and_test(communicator, expected_connection)
