@@ -67,24 +67,38 @@ class TestChatConsumer:
         """Generate a JWT token from the payload."""
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
+    @pytest.mark.parametrize(
+        "user_scenario, expected_connection",
+        [
+            ("owner", True),
+            ("another_user", False),
+        ]
+    )
     @pytest.mark.asyncio
     @patch('redis.asyncio.client.Redis')
     @patch("share.middleware.jwt.decode")
-    async def test_valid_token_and_chat_connection(self, mock_jwt_decode, mock_redis, chat, channel_layer):
-        """Test successful connection with a valid token and chat ID."""
+    async def test_chat_connection(self, mock_jwt_decode, mock_redis, chat, channel_layer, user_scenario,
+                                   expected_connection, user_factory):
+        """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
 
         chat_instance, owner, _ = await chat
 
-        token_payload = await self.generate_token_payload(owner.id)
+        if user_scenario == "owner":
+            user_id = owner.id
+        else:
+            another_user = await self.create_user(user_factory)
+            user_id = another_user.id
+
+        token_payload = await self.generate_token_payload(user_id)
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
         communicator = WebsocketCommunicator(application, f"/ws/chat/{chat_instance.pk}/?token={token}")
 
         connected, _ = await communicator.connect()
-        assert connected, "WebSocket connection failed with a valid token."
+        assert connected == expected_connection, f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
 
         await communicator.disconnect()
 
