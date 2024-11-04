@@ -26,10 +26,18 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
 
 class GroupRetrieveDestroyView(generics.RetrieveDestroyAPIView):
-    queryset = Group.objects.all()
     serializer_class = GroupSerializer
     permission_classes = [permissions.IsAuthenticated, IsOwner]
     http_method_names = ['get', 'delete']
+
+    def get_queryset(self):
+        user = self.request.user
+        return Group.objects.filter(owner=user) | Group.objects.filter(members=user)
+
+    def perform_destroy(self, instance):
+        if instance.owner != self.request.user:
+            raise PermissionDenied("You do not have permission to delete this group.")
+        instance.delete()
 
 
 class GroupMessageCreateView(generics.ListCreateAPIView):
