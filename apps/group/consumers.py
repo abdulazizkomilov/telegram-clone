@@ -93,11 +93,11 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     async def create_message(self, pk, data, **kwargs):
         """Create and broadcast a new message."""
         if not await self.is_user_group_member():
-            await self.send_json({'error': 'You are not a member of this group. Pls join first.'})
+            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
             return
 
         if not await self.can_send_message(self.group.id):
-            await self.send_json({'error': 'You do not have permission to send messages.'})
+            await self.send_json({'detail': 'You do not have permission to send messages.'})
             return
 
         message = await self.save_message(self.group, self.user, data)
@@ -141,7 +141,7 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     @action()
     async def schedule_message(self, data, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'error': 'You are not a member of this group. Pls join first.'})
+            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
             return
 
         group = await self.get_group()
@@ -156,7 +156,7 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     @action()
     async def like_message(self, message_id, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'error': 'You are not a member of this group. Pls join first.'})
+            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
             return
 
         message = await self.get_message(message_id)
@@ -174,7 +174,7 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     @action()
     async def unlike_message(self, message_id, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'error': 'You are not a member of this group.'})
+            await self.send_json({'detail': 'You are not a member of this group.'})
             return
 
         message = await self.get_message(message_id)
@@ -286,6 +286,8 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def is_user_group_member(self):
         """Check if the user is a member of the group."""
+        if self.group.owner.id == self.user.id:
+            return True
         return self.group.members.filter(id=self.user.id).exists()
 
     async def is_authenticated(self):
