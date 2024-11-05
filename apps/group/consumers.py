@@ -5,6 +5,7 @@ from djangochannelsrestframework.observer.generics import action
 from django.contrib.auth.models import AnonymousUser
 from django.utils import timezone
 from datetime import timedelta
+from asgiref.sync import sync_to_async
 from share.tasks import send_push_notification
 
 from .models import Group, GroupMessage, GroupParticipant, GroupScheduledMessage, GroupPermission
@@ -107,12 +108,15 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
         for member_data in group_members:
             user = await self.get_user(member_data['id'])
 
-            if not user.is_online:
+            if user.is_online is False:
                 try:
-                    user_notification_pref = getattr(user, 'notification_preference', None)
-                    if user_notification_pref and user_notification_pref.notifications_enabled:
+                    user_notification_pref = await sync_to_async(
+                        lambda: getattr(user, 'notification_preference', None))()
+
+                    if user_notification_pref is not None and user_notification_pref.notifications_enabled:
+                        device_token = await sync_to_async(lambda: user_notification_pref.device_token)()
                         send_push_notification.delay(
-                            token=user_notification_pref.device_token,
+                            token=device_token,
                             title="New Message in Group",
                             body=message.text
                         )
