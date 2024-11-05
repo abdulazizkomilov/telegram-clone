@@ -14,9 +14,6 @@ class User(AbstractBaseUser, BaseModel, PermissionsMixin):
     last_name = models.CharField(max_length=30, null=True, blank=True)
     bio = models.TextField(null=True, blank=True)
     birth_date = models.DateField(null=True, blank=True)
-    public_key = models.TextField(blank=True, null=True)
-    private_key = models.TextField(blank=True, null=True)
-    device_token = models.TextField(blank=True, null=True)
 
     is_verified = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=False)

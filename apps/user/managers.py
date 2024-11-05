@@ -1,9 +1,6 @@
 from django.contrib.auth.models import BaseUserManager
 
 
-# from share.encryption import generate_key_pair
-
-
 class UserManager(BaseUserManager):
     def create_user(self, phone_number, password=None, **extra_fields):
         if not phone_number:

@@ -33,7 +33,6 @@ class UserFactory(factory.django.DjangoModelFactory):
     is_verified = True
     is_2fa_enabled = False
     otp_secret = factory.Faker('sha1')
-    device_token = factory.Faker('sha1')
 
     birth_date = fake.date(pattern="%Y-%m-%d")
     last_seen = factory.LazyFunction(lambda: timezone.make_aware(fake.date_time()))
