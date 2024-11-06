@@ -145,7 +145,7 @@ class ChannelMessageListCreateView(generics.ListCreateAPIView):
         # notification to channel members
         for membership in channel.memberships.all():
             if membership.user != self.request.user:
-                send_push_notification.delay(membership.user.id, f"New Message in {channel.name}", message.text)
+                send_push_notification.delay(str(membership.user.id), f"New Message in {channel.name}", message.text)
 
 
 class ChannelMessageDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -157,7 +157,31 @@ class ChannelMessageDetailView(generics.RetrieveUpdateDestroyAPIView):
     http_method_names = ['get', 'patch', 'delete']
 
     def get_queryset(self):
-        return ChannelMessage.objects.filter(channel__id=self.kwargs['pk'])
+        channel_id = self.kwargs['pk']
+        message_id = self.kwargs['message_id']
+        return ChannelMessage.objects.filter(channel__id=channel_id, id=message_id)
+
+    def get_object(self):
+        queryset = self.get_queryset()
+        if not queryset.exists():
+            raise Http404("No ChannelMembership matches the given query.")
+        return queryset.first()
+
+    def patch(self, request, *args, **kwargs):
+        message = self.get_object()
+        if request.user != message.channel.owner:
+            return Response({"detail": "You are not the owner of this channel."}, status=status.HTTP_403_FORBIDDEN)
+        serializer = self.get_serializer(message, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        message = self.get_object()
+        if request.user != message.channel.owner:
+            return Response({"detail": "You are not the owner of this channel."}, status=status.HTTP_403_FORBIDDEN)
+        message.delete()
+        return super().destroy(request, *args, **kwargs)
 
 
 class LikeMessageView(generics.GenericAPIView):
