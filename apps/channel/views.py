@@ -181,7 +181,7 @@ class ChannelMessageDetailView(generics.RetrieveUpdateDestroyAPIView):
         if request.user != message.channel.owner:
             return Response({"detail": "You are not the owner of this channel."}, status=status.HTTP_403_FORBIDDEN)
         message.delete()
-        return super().destroy(request, *args, **kwargs)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class LikeMessageView(generics.GenericAPIView):

@@ -1,7 +1,6 @@
 import pytest
 from rest_framework import status
 from channel.models import Channel, ChannelMessage, ChannelMembership
-from unittest.mock import call
 from unittest.mock import MagicMock
 from share.services import TokenService
 from unittest.mock import patch
@@ -142,3 +141,18 @@ class TestChannelMessageDetailView:
         mock_redis_client.smembers.return_value = {access.encode()}
 
         response = client.delete(f"/api/channels/{message.channel.id}/messages/{message.id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not ChannelMessage.objects.filter(id=message.id).exists(), "Message should be deleted"
+
+    def test_delete_message_as_non_owner(self, mocker, tokens, api_client, message, user_factory):
+        non_owner = user_factory.create()
+
+        mock_redis_client = MagicMock()
+        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+        access, _ = tokens(non_owner)
+        client = api_client(access)
+        mock_redis_client.smembers.return_value = {access.encode()}
+
+        response = client.delete(f"/api/channels/{message.channel.id}/messages/{message.id}/")
+        assert response.status_code == status.HTTP_403_FORBIDDEN, "Non-owner should not be able to delete messages"
