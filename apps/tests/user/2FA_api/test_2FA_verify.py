@@ -91,7 +91,6 @@ def test_verify_2fa(api_client, verify_2fa_success_data, user_factory, mocker):
     """Parameterized test for 2FA verification with various scenarios."""
     user = user_factory.create()
     client = api_client()
-    client.force_authenticate(user=user)
 
     otp_secret = "valid-otp-secret"
     hashed_secret = hashlib.sha1(otp_secret.encode('utf-8')).hexdigest()

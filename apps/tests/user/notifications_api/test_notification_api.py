@@ -1,5 +1,7 @@
 import pytest
 from rest_framework import status
+from unittest.mock import MagicMock
+from share.services import TokenService
 from django.contrib.auth import get_user_model
 from user.models import NotificationPreference
 
@@ -7,11 +9,17 @@ User = get_user_model()
 
 
 @pytest.mark.django_db
-def test_get_notification_preference(api_client, user_factory):
+def test_get_notification_preference(mocker, tokens, api_client, user_factory):
     """Test retrieving notification preferences for the authenticated user."""
     user = user_factory.create()
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get('/api/users/notifications/')
 
@@ -25,11 +33,17 @@ def test_get_notification_preference(api_client, user_factory):
 
 
 @pytest.mark.django_db
-def test_update_notification_preference(api_client, user_factory):
+def test_update_notification_preference(mocker, tokens, api_client, user_factory):
     """Test updating the notification preferences for the authenticated user."""
     user = user_factory.create()
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     client.get('/api/users/notifications/')
 

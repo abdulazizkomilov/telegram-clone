@@ -1,5 +1,7 @@
 import pytest
 from rest_framework import status
+from unittest.mock import MagicMock
+from share.services import TokenService
 from user.models import Contact, User
 
 CONTACT_LIST_CREATE_URL = "/api/users/contacts/"
@@ -25,11 +27,16 @@ def contact(user, friend):
 
 
 @pytest.mark.django_db
-def test_list_contacts(api_client, contact):
+def test_list_contacts(mocker, tokens, api_client, contact):
     """Test listing contacts for the authenticated user."""
 
-    client = api_client()
-    client.force_authenticate(user=contact.user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(contact.user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get(CONTACT_LIST_CREATE_URL)
     assert response.status_code == status.HTTP_200_OK
@@ -39,11 +46,16 @@ def test_list_contacts(api_client, contact):
 
 
 @pytest.mark.django_db
-def test_create_contact(api_client, tokens, user, friend):
+def test_create_contact(mocker, api_client, tokens, user, friend):
     """Test creating a new contact."""
 
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     data = {
         "first_name": "New",
@@ -59,11 +71,17 @@ def test_create_contact(api_client, tokens, user, friend):
 
 
 @pytest.mark.django_db
-def test_delete_contact(api_client, tokens, contact):
+def test_delete_contact(mocker, api_client, tokens, contact):
     """Test deleting a contact."""
     user = contact.user
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.delete(CONTACT_DELETE_URL(contact.id))
     assert response.status_code == status.HTTP_204_NO_CONTENT
@@ -71,23 +89,33 @@ def test_delete_contact(api_client, tokens, contact):
 
 
 @pytest.mark.django_db
-def test_delete_contact_not_owned(api_client, tokens, user_factory, contact):
+def test_delete_contact_not_owned(mocker, api_client, tokens, user_factory, contact):
     """Test that a user cannot delete a contact they don't own."""
     other_user = user_factory.create(username="otheruser", phone_number="+998927654121")
 
-    client = api_client()
-    client.force_authenticate(user=other_user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(other_user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.delete(CONTACT_DELETE_URL(contact.id))
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db
-def test_sync_contacts(api_client, tokens, user, friend):
+def test_sync_contacts(mocker, api_client, tokens, user, friend):
     """Test syncing contacts."""
 
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     data = [
         {"phone_number": friend.phone_number, "first_name": friend.first_name, "last_name": friend.last_name},

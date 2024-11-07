@@ -1,5 +1,7 @@
 import pytest
 from rest_framework import status
+from unittest.mock import MagicMock
+from share.services import TokenService
 from channels.layers import get_channel_layer
 from unittest.mock import patch, AsyncMock
 from chat.models import Message
@@ -19,16 +21,21 @@ class TestMessageListCreateView:
         }
         return get_channel_layer()
 
-    def test_list_messages(self, api_client, user_factory, chat_factory):
+    def test_list_messages(self, mocker, tokens, api_client, user_factory, chat_factory):
         """Test that authenticated users can list messages."""
+        mock_redis_client = MagicMock()
+        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
         user = user_factory.create()
         owner = user_factory.create()
         chat = chat_factory.create(owner=owner, user=user)
 
         Message.objects.create(chat=chat, sender=owner, text="Hello!")
 
-        client = api_client()
-        client.force_authenticate(user=user)
+        access, _ = tokens(user)
+        client = api_client(access)
+
+        mock_redis_client.smembers.return_value = {access.encode()}
 
         response = client.get(f"/api/chats/{chat.id}/messages/")
 
@@ -36,14 +43,20 @@ class TestMessageListCreateView:
         assert len(response.data['results']) == 1
         assert response.data['results'][0]['text'] == "Hello!"
 
-    def test_create_message(self, api_client, user_factory, chat_factory, channel_layer, generate_test_image,
+    def test_create_message(self, mocker, tokens, api_client, user_factory, chat_factory, channel_layer,
+                            generate_test_image,
                             generate_test_file):
         """Test that a message is created and group_send is called."""
         user = user_factory.create()
         chat = chat_factory.create(owner=user, user=user)
 
-        client = api_client()
-        client.force_authenticate(user=user)
+        mock_redis_client = MagicMock()
+        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+        access, _ = tokens(user)
+        client = api_client(access)
+
+        mock_redis_client.smembers.return_value = {access.encode()}
 
         test_image = generate_test_image
         test_file = generate_test_file

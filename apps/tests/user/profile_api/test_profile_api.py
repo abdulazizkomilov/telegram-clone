@@ -1,4 +1,6 @@
 import pytest
+from unittest.mock import MagicMock
+from share.services import TokenService
 from rest_framework import status
 
 PROFILE_URL = "/api/users/profile/"
@@ -40,11 +42,18 @@ def unverified_user_data(user_factory):
         ("unverified_user_data", status.HTTP_403_FORBIDDEN, None),
     ],
 )
-def test_user_profile_retrieve(api_client, request, user_fixture, expected_status, expected_response_keys):
+def test_user_profile_retrieve(mocker, tokens, api_client, request, user_fixture, expected_status,
+                               expected_response_keys):
     """Test retrieving profile for both verified and unverified users."""
     user = request.getfixturevalue(user_fixture)
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get(PROFILE_URL)
     assert response.status_code == expected_status
@@ -82,11 +91,18 @@ def test_user_profile_retrieve(api_client, request, user_fixture, expected_statu
         ),
     ],
 )
-def test_user_profile_update(api_client, user_profile_data, update_data, expected_status, expected_error):
+def test_user_profile_update(mocker, tokens, api_client, user_profile_data, update_data, expected_status,
+                             expected_error):
     """Test updating profile data."""
     user = user_profile_data
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.patch(PROFILE_URL, data=update_data, format='json')
     assert response.status_code == expected_status

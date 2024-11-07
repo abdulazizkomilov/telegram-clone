@@ -6,6 +6,8 @@ from io import BytesIO
 from django.core.files.uploadedfile import SimpleUploadedFile
 from user.models import UserAvatar
 from django.utils import timezone
+from unittest.mock import MagicMock
+from share.services import TokenService
 from faker import Faker
 from pytest_factoryboy import register
 
@@ -50,7 +52,6 @@ def sample_avatar_file():
     )
 
 
-# Parameterized test for GET and DELETE operations
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "method, url_func, expected_status",
@@ -59,11 +60,16 @@ def sample_avatar_file():
         ("delete", lambda avatar: AVATAR_DETAIL_URL(avatar.id), status.HTTP_204_NO_CONTENT),
     ],
 )
-def test_avatar_operations(api_client, user_with_avatar, method, url_func, expected_status):
+def test_avatar_operations(mocker, tokens, api_client, user_with_avatar, method, url_func, expected_status):
     """Test retrieving or deleting a user's avatar with valid authentication."""
     user, avatar = user_with_avatar
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = getattr(client, method)(url_func(avatar))
 
@@ -83,17 +89,24 @@ def test_avatar_operations(api_client, user_with_avatar, method, url_func, expec
 def test_avatar_unauthenticated(api_client, user_with_avatar, method, expected_status):
     """Test unauthenticated users cannot access or delete avatars."""
     _, avatar = user_with_avatar
+    client = api_client()
 
-    response = getattr(api_client(), method)(AVATAR_DETAIL_URL(avatar.id))
+    response = getattr(client, method)(AVATAR_DETAIL_URL(avatar.id))
     assert response.status_code == expected_status
 
 
 @pytest.mark.django_db
-def test_upload_avatar(api_client, user_factory, sample_avatar_file):
+def test_upload_avatar(mocker, tokens, api_client, user_factory, sample_avatar_file):
     """Test that a user can upload an avatar."""
     user = user_factory.create()
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.post(
         AVATAR_UPLOAD_URL, {"avatar": sample_avatar_file}, format="multipart"
@@ -106,11 +119,17 @@ def test_upload_avatar(api_client, user_factory, sample_avatar_file):
 
 
 @pytest.mark.django_db
-def test_get_user_avatars(api_client, user_with_avatar):
+def test_get_user_avatars(mocker, tokens, api_client, user_with_avatar):
     """Test retrieving a list of user avatars."""
     user, _ = user_with_avatar
-    client = api_client()
-    client.force_authenticate(user=user)
+
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get(AVATAR_UPLOAD_URL)
 

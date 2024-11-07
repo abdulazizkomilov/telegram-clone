@@ -1,16 +1,23 @@
 import pytest
 from django.utils.timezone import now
+from unittest.mock import MagicMock
+from share.services import TokenService
 from user.models import DeviceInfo
 
 
 @pytest.mark.django_db
-def test_track_login_activity_middleware(api_client, user_factory):
+def test_track_login_activity_middleware(mocker, tokens, api_client, user_factory):
     """Test that DeviceInfo is created when a user logs in."""
 
     user = user_factory.create()
 
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get('/api/users/profile/',
                           HTTP_X_FORWARDED_FOR='194.23.54.23',
@@ -25,15 +32,20 @@ def test_track_login_activity_middleware(api_client, user_factory):
 
 
 @pytest.mark.django_db
-def test_device_list_view(api_client, user_factory):
+def test_device_list_view(mocker, tokens, api_client, user_factory):
     """Test that the DeviceListView returns the correct devices."""
 
     user = user_factory.create()
     DeviceInfo.objects.create(user=user, device_name='Device1', ip_address='194.23.54.23')
     DeviceInfo.objects.create(user=user, device_name='Device2', ip_address='192.168.0.1')
 
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.get("/api/users/devices/")
 

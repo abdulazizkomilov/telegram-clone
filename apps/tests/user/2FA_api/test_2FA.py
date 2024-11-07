@@ -1,5 +1,7 @@
 import pytest
 from rest_framework import status
+from unittest.mock import MagicMock
+from share.services import TokenService
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -16,10 +18,15 @@ User = get_user_model()
         ({"type": False, "otp_secret": ""}, status.HTTP_200_OK, {"detail": "2FA disabled."}),
     ]
 )
-def test_enable_2fa(api_client, user, data, expected_status, expected_detail):
+def test_enable_2fa(mocker, tokens, api_client, user, data, expected_status, expected_detail):
     """Test enabling and disabling 2FA for a user."""
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     response = client.post("/api/users/2fa/", data, format="json")
     assert response.status_code == expected_status
@@ -40,10 +47,15 @@ def test_enable_2fa(api_client, user, data, expected_status, expected_detail):
 
 @pytest.mark.order(2)
 @pytest.mark.django_db
-def test_disable_2fa_success(api_client, user):
+def test_disable_2fa_success(mocker, tokens, api_client, user):
     """Test disabling 2FA for a user."""
-    client = api_client()
-    client.force_authenticate(user=user)
+    mock_redis_client = MagicMock()
+    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+
+    access, _ = tokens(user)
+    client = api_client(access)
+
+    mock_redis_client.smembers.return_value = {access.encode()}
 
     data = {
         "type": True,
