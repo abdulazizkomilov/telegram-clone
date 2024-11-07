@@ -17,7 +17,7 @@ class TestSendChannelScheduledMessageTask:
         notification_preference = NotificationPreference.objects.create(
             user=member_with_notifications,
             notifications_enabled=True,
-            device_token="token1"
+            device_token="token1",
         )
         member_with_notifications.notification_preference = notification_preference
         member_with_notifications.save()
@@ -32,26 +32,30 @@ class TestSendChannelScheduledMessageTask:
             sender=owner,
             text="Scheduled message",
             scheduled_time=timezone.now() - timezone.timedelta(minutes=5),
-            sent=False
+            sent=False,
         )
         return {
             "channel": channel,
             "scheduled_message": scheduled_message,
             "member_with_notifications": member_with_notifications,
-            "member_without_notifications": member_without_notifications
+            "member_without_notifications": member_without_notifications,
         }
 
     @patch("channel.tasks.send_push_notification.delay")
     def test_send_scheduled_messages(self, mock_send_push_notification, setup_data):
         send_channel_scheduled_message()
 
-        scheduled_message = ChannelScheduledMessage.objects.get(id=setup_data["scheduled_message"].id)
+        scheduled_message = ChannelScheduledMessage.objects.get(
+            id=setup_data["scheduled_message"].id
+        )
         assert scheduled_message.sent is True
 
         assert ChannelMessage.objects.filter(channel=setup_data["channel"]).count() == 1
 
         mock_send_push_notification.assert_called_once_with(
-            setup_data["member_with_notifications"].notification_preference.device_token,
+            setup_data[
+                "member_with_notifications"
+            ].notification_preference.device_token,
             f"New Message in {setup_data['channel'].name}",
-            setup_data["scheduled_message"].text
+            setup_data["scheduled_message"].text,
         )

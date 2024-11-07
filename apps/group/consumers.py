@@ -8,7 +8,13 @@ from datetime import timedelta
 from asgiref.sync import sync_to_async
 from share.tasks import send_push_notification
 
-from .models import Group, GroupMessage, GroupParticipant, GroupScheduledMessage, GroupPermission
+from .models import (
+    Group,
+    GroupMessage,
+    GroupParticipant,
+    GroupScheduledMessage,
+    GroupPermission,
+)
 from .serializers import GroupMessageSerializer
 from user.models import User
 from user.serializers import UserSerializer
@@ -21,14 +27,14 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
 
     async def connect(self):
         """Handle WebSocket connection."""
-        self.user = self.scope.get('user', AnonymousUser())
-        self.group_id = self.scope['url_route']['kwargs']['pk']
+        self.user = self.scope.get("user", AnonymousUser())
+        self.group_id = self.scope["url_route"]["kwargs"]["pk"]
 
         if not (await self.is_authenticated() and await self.has_group_access()):
             await self.close()
             return
 
-        await self.channel_layer.group_add(f'group__{self.group_id}', self.channel_name)
+        await self.channel_layer.group_add(f"group__{self.group_id}", self.channel_name)
         await self.accept()
 
         await self.add_user_to_group()
@@ -43,62 +49,58 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
             await self.update_user_status(is_online=False)
             await self.notify_group_users()
 
-        await self.channel_layer.group_discard(f'group__{self.group_id}', self.channel_name)
+        await self.channel_layer.group_discard(
+            f"group__{self.group_id}", self.channel_name
+        )
         await super().disconnect(code)
 
     async def notify_group_users(self):
         """Notify group members about user status changes."""
         group_members = await self.get_group_members()
         await self.channel_layer.group_send(
-            f'group__{self.group_id}',
+            f"group__{self.group_id}",
             {
-                'type': 'update_group_users',
-                'users': group_members,
-            }
+                "type": "update_group_users",
+                "users": group_members,
+            },
         )
 
     async def update_group_users(self, event: dict):
         """Send updated user list to the client."""
-        await self.send_json({'users': event["users"]})
+        await self.send_json({"users": event["users"]})
 
     async def group_message(self, event):
         """Send new group message to clients."""
-        await self.send_json({
-            'action': 'new_message',
-            'data': event['text']
-        })
+        await self.send_json({"action": "new_message", "data": event["text"]})
 
     async def message_liked(self, event):
-        await self.send_json({
-            'action': 'message_liked',
-            'data': event['message']
-        })
+        await self.send_json({"action": "message_liked", "data": event["message"]})
 
     async def message_unliked(self, event):
-        await self.send_json({
-            'action': 'message_unliked',
-            'data': event['message']
-        })
+        await self.send_json({"action": "message_unliked", "data": event["message"]})
 
     @action()
     async def get_messages(self, pk, **kwargs):
         messages = await self.fetch_group_messages(pk)
         serialized_messages = await self.serialize_messages(messages)
 
-        await self.send_json({
-            "action": "get_messages",
-            "messages": serialized_messages
-        })
+        await self.send_json(
+            {"action": "get_messages", "messages": serialized_messages}
+        )
 
     @action()
     async def create_message(self, pk, data, **kwargs):
         """Create and broadcast a new message."""
         if not await self.is_user_group_member():
-            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
+            await self.send_json(
+                {"detail": "You are not a member of this group. Please join first."}
+            )
             return
 
         if not await self.can_send_message(self.group.id):
-            await self.send_json({'detail': 'You do not have permission to send messages.'})
+            await self.send_json(
+                {"detail": "You do not have permission to send messages."}
+            )
             return
 
         message = await self.save_message(self.group, self.user, data)
@@ -106,29 +108,35 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
         group_members = await self.get_group_members()
 
         for member_data in group_members:
-            user = await self.get_user(member_data['id'])
+            user = await self.get_user(member_data["id"])
 
             if user.is_online is False:
                 try:
                     user_notification_pref = await sync_to_async(
-                        lambda: getattr(user, 'notification_preference', None))()
+                        lambda: getattr(user, "notification_preference", None)
+                    )()
 
-                    if user_notification_pref is not None and user_notification_pref.notifications_enabled:
-                        device_token = await sync_to_async(lambda: user_notification_pref.device_token)()
+                    if (
+                        user_notification_pref is not None
+                        and user_notification_pref.notifications_enabled
+                    ):
+                        device_token = await sync_to_async(
+                            lambda: user_notification_pref.device_token
+                        )()
                         send_push_notification.delay(
                             token=device_token,
                             title="New Message in Group",
-                            body=message.text
+                            body=message.text,
                         )
                 except Exception as e:
                     print(f"Error: {e}")
 
         await self.channel_layer.group_send(
-            f'group__{pk}',
+            f"group__{pk}",
             {
-                'type': 'group_message',
-                'text': serialized_message,
-            }
+                "type": "group_message",
+                "text": serialized_message,
+            },
         )
 
     @action()
@@ -137,15 +145,19 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
         messages = await self.fetch_group_messages(pk)
         serialized_messages = await self.serialize_messages(messages)
 
-        await self.send_json({
-            "action": "get_group_messages",
-            "messages": serialized_messages,
-        })
+        await self.send_json(
+            {
+                "action": "get_group_messages",
+                "messages": serialized_messages,
+            }
+        )
 
     @action()
     async def schedule_message(self, data, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
+            await self.send_json(
+                {"detail": "You are not a member of this group. Please join first."}
+            )
             return
 
         group = await self.get_group()
@@ -160,7 +172,9 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     @action()
     async def like_message(self, message_id, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'detail': 'You are not a member of this group. Please join first.'})
+            await self.send_json(
+                {"detail": "You are not a member of this group. Please join first."}
+            )
             return
 
         message = await self.get_message(message_id)
@@ -168,17 +182,14 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
             await self.add_like(message, self.user)
             serialized_message = await self.serialize_message(message)
             await self.channel_layer.group_send(
-                f'group__{message.group.id}',
-                {
-                    'type': 'message_liked',
-                    'message': serialized_message
-                }
+                f"group__{message.group.id}",
+                {"type": "message_liked", "message": serialized_message},
             )
 
     @action()
     async def unlike_message(self, message_id, **kwargs):
         if not await self.is_user_group_member():
-            await self.send_json({'detail': 'You are not a member of this group.'})
+            await self.send_json({"detail": "You are not a member of this group."})
             return
 
         message = await self.get_message(message_id)
@@ -186,11 +197,8 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
             await self.remove_like(message, self.user)
             serialized_message = await self.serialize_message(message)
             await self.channel_layer.group_send(
-                f'group__{message.group.id}',
-                {
-                    'type': 'message_unliked',
-                    'message': serialized_message
-                }
+                f"group__{message.group.id}",
+                {"type": "message_unliked", "message": serialized_message},
             )
 
     @database_sync_to_async
@@ -224,7 +232,9 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
     def save_scheduled_message(self, group: Group, user: User, data: dict):
         scheduled_time = data.get("scheduled_time")
         if isinstance(scheduled_time, str):
-            scheduled_time = timezone.datetime.strptime(scheduled_time, '%Y-%m-%dT%H:%M:%SZ')
+            scheduled_time = timezone.datetime.strptime(
+                scheduled_time, "%Y-%m-%dT%H:%M:%SZ"
+            )
             scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
 
         scheduled_time = scheduled_time - timedelta(hours=5)
@@ -233,12 +243,14 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
             group=group,
             sender=user,
             text=data.get("text"),
-            scheduled_time=scheduled_time
+            scheduled_time=scheduled_time,
         )
 
     @database_sync_to_async
     def serialize_messages(self, messages):
-        return GroupMessageSerializer(messages, many=True, context={'user': self.user}).data
+        return GroupMessageSerializer(
+            messages, many=True, context={"user": self.user}
+        ).data
 
     @database_sync_to_async
     def serialize_message(self, message):
@@ -266,11 +278,7 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
         valid_keys = {"text", "image", "file"}
         message_data = {key: data.get(key) for key in valid_keys if data.get(key)}
 
-        return GroupMessage.objects.create(
-            group=group,
-            sender=user,
-            **message_data
-        )
+        return GroupMessage.objects.create(group=group, sender=user, **message_data)
 
     @database_sync_to_async
     def fetch_group_messages(self, pk: int):
@@ -278,7 +286,7 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
         group = Group.objects.filter(pk=pk).first()
         if not group:
             return []
-        return list(group.group_messages.order_by('sent_at'))
+        return list(group.group_messages.order_by("sent_at"))
 
     @database_sync_to_async
     def update_user_status(self, is_online):

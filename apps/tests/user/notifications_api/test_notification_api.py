@@ -14,14 +14,16 @@ def test_get_notification_preference(mocker, tokens, api_client, user_factory):
     user = user_factory.create()
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    response = client.get('/api/users/notifications/')
+    response = client.get("/api/users/notifications/")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data == {
@@ -38,20 +40,19 @@ def test_update_notification_preference(mocker, tokens, api_client, user_factory
     user = user_factory.create()
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    client.get('/api/users/notifications/')
+    client.get("/api/users/notifications/")
 
-    patch_data = {
-        "notifications_enabled": True,
-        "device_token": "abc123deviceToken"
-    }
-    response = client.patch('/api/users/notifications/', patch_data, format='json')
+    patch_data = {"notifications_enabled": True, "device_token": "abc123deviceToken"}
+    response = client.patch("/api/users/notifications/", patch_data, format="json")
 
     assert response.status_code == status.HTTP_200_OK
     assert response.data["notifications_enabled"] is True

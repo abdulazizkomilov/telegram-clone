@@ -10,7 +10,7 @@ from user.models import User
 
 ALGORITHM = "HS256"
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 
@@ -24,7 +24,7 @@ def get_user(token):
         return AnonymousUser()
 
     try:
-        user = User.objects.get(id=payload['user_id'])
+        user = User.objects.get(id=payload["user_id"])
     except User.DoesNotExist:
         return AnonymousUser()
 
@@ -35,12 +35,12 @@ class TokenAuthMiddleware(BaseMiddleware):
     async def __call__(self, scope, receive, send):
         close_old_connections()
         token_key = None
-        query_string = scope.get('query_string', b'').decode()
+        query_string = scope.get("query_string", b"").decode()
 
         if query_string:
-            token_key = dict(x.split('=') for x in query_string.split("&")).get('token')
+            token_key = dict(x.split("=") for x in query_string.split("&")).get("token")
 
-        scope['user'] = await get_user(token_key)
+        scope["user"] = await get_user(token_key)
         return await super().__call__(scope, receive, send)
 
 

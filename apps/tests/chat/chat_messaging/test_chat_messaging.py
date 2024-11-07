@@ -26,7 +26,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestChatConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -57,9 +56,11 @@ class TestChatConsumer:
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_messaging(self, mock_jwt_decode, mock_redis, chat, channel_layer):
+    async def test_chat_messaging(
+        self, mock_jwt_decode, mock_redis, chat, channel_layer
+    ):
         """This test checks that the chat messaging system works correctly."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -70,31 +71,35 @@ class TestChatConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/chats/{chat_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/chats/{chat_instance.pk}/?token={token}"
+        )
 
         connected, _ = await communicator.connect()
         assert connected, "WebSocket connection failed with a valid token."
 
         messages = await communicator.receive_json_from()
-        assert messages['action'] == "get_messages", "Expected get_messages action"
-        assert len(messages['messages']) == 0, "Expected no messages"
+        assert messages["action"] == "get_messages", "Expected get_messages action"
+        assert len(messages["messages"]) == 0, "Expected no messages"
 
         users = await communicator.receive_json_from()
-        assert users['users'][0]['id'] == str(owner.id), "Expected user ID"
+        assert users["users"][0]["id"] == str(owner.id), "Expected user ID"
 
         json_data = {
             "action": "create_message",
             "request_id": "1",
             "pk": str(chat_instance.pk),
-            "data": {"text": "Hello, group!"}
+            "data": {"text": "Hello, group!"},
         }
 
         await communicator.send_json_to(json_data)
 
         data = await communicator.receive_json_from()
-        assert data['action'] == "new_message", "Expected new_message action"
-        assert data['data']['text'] == "Hello, group!", "Expected 'Hello, group!' message"
-        assert data['data']['chat']['id'] == str(chat_instance.pk), "Expected chat ID"
+        assert data["action"] == "new_message", "Expected new_message action"
+        assert (
+            data["data"]["text"] == "Hello, group!"
+        ), "Expected 'Hello, group!' message"
+        assert data["data"]["chat"]["id"] == str(chat_instance.pk), "Expected chat ID"
 
         await communicator.disconnect()
 

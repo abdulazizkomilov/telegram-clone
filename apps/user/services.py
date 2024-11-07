@@ -13,7 +13,9 @@ from user.models import User
 
 class UserService:
     @classmethod
-    def authenticate(cls, phone_number: str, password: str, quiet=False) -> Union[ValidationError, User, None]:
+    def authenticate(
+        cls, phone_number: str, password: str, quiet=False
+    ) -> Union[ValidationError, User, None]:
         user = authenticate(username=phone_number, password=password)
         if user is None or not user.check_password(password):
             if quiet:
@@ -24,7 +26,9 @@ class UserService:
         return user
 
     @classmethod
-    def create_tokens(cls, user: User, access: str = None, refresh: str = None) -> dict[str, str]:
+    def create_tokens(
+        cls, user: User, access: str = None, refresh: str = None
+    ) -> dict[str, str]:
         if not access or not refresh:
             refresh = RefreshToken.for_user(user)
             access = str(getattr(refresh, "access_token"))

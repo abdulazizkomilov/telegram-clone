@@ -9,7 +9,9 @@ from channels.layers import get_channel_layer
 
 @database_sync_to_async
 def create_user(phone_number):
-    return User.objects.create(phone_number=phone_number, is_verified=True, is_active=True)
+    return User.objects.create(
+        phone_number=phone_number, is_verified=True, is_active=True
+    )
 
 
 @database_sync_to_async
@@ -37,48 +39,11 @@ async def test_chat_consumer(tokens, channel_layer):
 
     access, _ = tokens(user1)
 
-    communicator = WebsocketCommunicator(application, f"/ws/chats/{chat.id}/?token={access}")
+    communicator = WebsocketCommunicator(
+        application, f"/ws/chats/{chat.id}/?token={access}"
+    )
 
     connected, _ = await communicator.connect()
     assert connected, "WebSocket connection failed."
 
     await communicator.disconnect()
-
-
-"""
-from channels.generic.websocket import WebsocketConsumer
-
-from .models import Chat
-from .serializers import ChatSerializer
-
-class ChatConsumer(WebsocketConsumer):
-    queryset = Chat.objects.all()
-    serializer_class = ChatSerializer
-    lookup_field = "pk"
-
-    async def connect(self):
-        await self.accept()
-
-    async def disconnect(self, code):
-        await super().disconnect(code)
-
-
-Post:
-https://medium.com/@adabur/introduction-to-django-channels-and-websockets-cb38cd015e29
-
-https://medium.com/django-unleashed/websockets-based-apis-with-django-real-time-communication-made-easy-2122b49720bf
-
-import json
-from channels.generic.websocket import WebsocketConsumer
-class ChatConsumer(WebsocketConsumer):
-    def connect(self):
-        self.accept()
-    def disconnect(self, close_code):
-        pass
-    def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        message = text_data_json['message']
-        self.send(text_data=json.dumps({
-            'message': message
-        }))
-"""

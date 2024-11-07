@@ -15,14 +15,16 @@ class TrackLoginActivityMiddleware:
 
         if request.user.is_authenticated:
             ip_address = self.get_client_ip(request)
-            user_agent = request.META.get('HTTP_USER_AGENT', 'unknown device')
+            user_agent = request.headers.get("user-agent", "unknown device")
 
-            if not DeviceInfo.objects.filter(user=request.user, ip_address=ip_address).exists():
+            if not DeviceInfo.objects.filter(
+                user=request.user, ip_address=ip_address
+            ).exists():
                 DeviceInfo.objects.create(
                     user=request.user,
                     device_name=user_agent,
                     ip_address=ip_address,
-                    last_login=timezone.now()
+                    last_login=timezone.now(),
                 )
 
         return response
@@ -31,9 +33,9 @@ class TrackLoginActivityMiddleware:
         """
         Get the client IP address from the request.
         """
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        x_forwarded_for = request.headers.get("x-forwarded-for")
         if x_forwarded_for:
-            ip = x_forwarded_for.split(',')[0]
+            ip = x_forwarded_for.split(",")[0]
         else:
-            ip = request.META.get('REMOTE_ADDR')
+            ip = request.META.get("REMOTE_ADDR")
         return ip

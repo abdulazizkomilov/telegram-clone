@@ -38,8 +38,8 @@ class CustomJWTAuthentication(JWTAuthentication):
     def is_valid_access_token(self, path: str, user: User, access_token: Token) -> bool:
         valid_access_tokens = TokenService.get_valid_tokens(user.id, TokenType.ACCESS)
         if (
-                valid_access_tokens
-                and str(access_token).encode() not in valid_access_tokens
+            valid_access_tokens
+            and str(access_token).encode() not in valid_access_tokens
         ):
             raise AuthenticationFailed(_("Could not validate credentials"))
 

@@ -28,20 +28,20 @@ class User(AbstractBaseUser, BaseModel, PermissionsMixin):
 
     objects = UserManager()
 
-    USERNAME_FIELD = 'phone_number'
+    USERNAME_FIELD = "phone_number"
     REQUIRED_FIELDS = []
 
     class Meta:
         db_table = "user"
         verbose_name = "User"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
     def __str__(self):
         return self.first_name or self.username or self.phone_number
 
     def update_last_seen(self):
         self.last_seen = timezone.now()
-        self.save(update_fields=['last_seen'])
+        self.save(update_fields=["last_seen"])
 
 
 class UserAvatar(BaseModel):
@@ -51,11 +51,11 @@ class UserAvatar(BaseModel):
     class Meta:
         db_table = "user_avatar"
         verbose_name = "User Avatar"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class DeviceInfo(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='devices')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="devices")
     device_name = models.CharField(max_length=255, null=True, blank=True)
     ip_address = models.GenericIPAddressField()
     last_login = models.DateTimeField(default=timezone.now)
@@ -66,14 +66,14 @@ class DeviceInfo(BaseModel):
     class Meta:
         db_table = "device_info"
         verbose_name = "Device Info"
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
 
 
 class Contact(BaseModel):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="contacts")
     first_name = models.CharField(max_length=30, null=True, blank=True)
     last_name = models.CharField(max_length=30, null=True, blank=True)
-    friend = models.ForeignKey(User, on_delete=models.CASCADE, related_name='added_by')
+    friend = models.ForeignKey(User, on_delete=models.CASCADE, related_name="added_by")
     added_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -90,11 +90,13 @@ class Contact(BaseModel):
     class Meta:
         db_table = "contact"
         verbose_name = "Contact"
-        ordering = ['-added_at']
+        ordering = ["-added_at"]
 
 
 class NotificationPreference(BaseModel):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='notification_preference')
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="notification_preference"
+    )
     notifications_enabled = models.BooleanField(default=False)
     device_token = models.CharField(max_length=555, blank=True, null=True)
 

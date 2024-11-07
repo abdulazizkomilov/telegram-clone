@@ -14,7 +14,9 @@ from user.models import User
 from user.serializers import UserSerializer
 
 
-class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
+class ChatConsumer(
+    ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer
+):
     queryset = Chat.objects.all()
     serializer_class = ChatSerializer
     lookup_field = "pk"
@@ -46,37 +48,29 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
             await self.remove_user_from_chat(self.chat_id)
             await self.update_user_status(is_online=False)
             await self.notify_users()
-            await self.channel_layer.group_discard(f"chat__{self.chat_id}", self.channel_name)
+            await self.channel_layer.group_discard(
+                f"chat__{self.chat_id}", self.channel_name
+            )
         await super().disconnect(code)
 
     async def notify_users(self):
         participants = await self.current_users(self.chat)
         users = await self.serialize_users(participants)
         await self.channel_layer.group_send(
-            f"chat__{self.chat_id}",
-            {"type": "update_users", "users": users}
+            f"chat__{self.chat_id}", {"type": "update_users", "users": users}
         )
 
     async def update_users(self, event):
         await self.send_json({"users": event["users"]})
 
     async def chat_message(self, event):
-        await self.send_json({
-            'action': 'new_message',
-            'data': event['text']
-        })
+        await self.send_json({"action": "new_message", "data": event["text"]})
 
     async def message_liked(self, event):
-        await self.send_json({
-            'action': 'message_liked',
-            'data': event['message']
-        })
+        await self.send_json({"action": "message_liked", "data": event["message"]})
 
     async def message_unliked(self, event):
-        await self.send_json({
-            'action': 'message_unliked',
-            'data': event['message']
-        })
+        await self.send_json({"action": "message_unliked", "data": event["message"]})
 
     @action()
     async def create_message(self, pk, data, **kwargs):
@@ -93,11 +87,7 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
         serialized_message = await self.serialize_message(message)
 
         await self.channel_layer.group_send(
-            f'chat__{pk}',
-            {
-                'type': 'chat_message',
-                'text': serialized_message
-            }
+            f"chat__{pk}", {"type": "chat_message", "text": serialized_message}
         )
 
     @action()
@@ -105,10 +95,9 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
         messages = await self.fetch_messages(pk)
         serialized_messages = await self.serialize_messages(messages)
 
-        await self.send_json({
-            "action": "get_messages",
-            "messages": serialized_messages
-        })
+        await self.send_json(
+            {"action": "get_messages", "messages": serialized_messages}
+        )
 
     @action()
     async def like_message(self, message_id, **kwargs):
@@ -118,11 +107,8 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
             await self.add_like(message, user)
             serialized_message = await self.serialize_message(message)
             await self.channel_layer.group_send(
-                f'chat__{message.chat.id}',
-                {
-                    'type': 'message_liked',
-                    'message': serialized_message
-                }
+                f"chat__{message.chat.id}",
+                {"type": "message_liked", "message": serialized_message},
             )
 
     @action()
@@ -133,11 +119,8 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
             await self.remove_like(message, user)
             serialized_message = await self.serialize_message(message)
             await self.channel_layer.group_send(
-                f'chat__{message.chat.id}',
-                {
-                    'type': 'message_unliked',
-                    'message': serialized_message
-                }
+                f"chat__{message.chat.id}",
+                {"type": "message_unliked", "message": serialized_message},
             )
 
     @action()
@@ -155,13 +138,13 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
     def fetch_messages(self, pk: int):
         try:
             chat = Chat.objects.get(pk=pk)
-            return list(chat.messages.order_by('sent_at'))
+            return list(chat.messages.order_by("sent_at"))
         except Chat.DoesNotExist:
             return []
 
     @database_sync_to_async
     def serialize_messages(self, messages):
-        return MessageSerializer(messages, many=True, context={'user': self.user}).data
+        return MessageSerializer(messages, many=True, context={"user": self.user}).data
 
     @database_sync_to_async
     def serialize_message(self, message):
@@ -171,16 +154,15 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
     def save_scheduled_message(self, chat: Chat, user: User, data: dict):
         scheduled_time = data.get("scheduled_time")
         if isinstance(scheduled_time, str):
-            scheduled_time = timezone.datetime.strptime(scheduled_time, '%Y-%m-%dT%H:%M:%SZ')
+            scheduled_time = timezone.datetime.strptime(
+                scheduled_time, "%Y-%m-%dT%H:%M:%SZ"
+            )
             scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
 
         scheduled_time = scheduled_time - timedelta(hours=5)
 
         return ScheduledMessage.objects.create(
-            chat=chat,
-            sender=user,
-            text=data.get("text"),
-            scheduled_time=scheduled_time
+            chat=chat, sender=user, text=data.get("text"), scheduled_time=scheduled_time
         )
 
     @database_sync_to_async
@@ -192,7 +174,7 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
 
     @database_sync_to_async
     def current_users(self, chat: Chat):
-        participants = ChatParticipant.objects.filter(chat=chat).select_related('user')
+        participants = ChatParticipant.objects.filter(chat=chat).select_related("user")
         return [UserSerializer(participant.user).data for participant in participants]
 
     @database_sync_to_async
@@ -210,11 +192,7 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
         valid_keys = {"text", "image", "file"}
         message_data = {key: data.get(key) for key in valid_keys if data.get(key)}
 
-        message = Message.objects.create(
-            chat=chat,
-            sender=user,
-            **message_data
-        )
+        message = Message.objects.create(chat=chat, sender=user, **message_data)
         return message
 
     @database_sync_to_async
@@ -233,17 +211,6 @@ class ChatConsumer(ObserverModelInstanceMixin, GenericAsyncAPIConsumer, AsyncJso
     def remove_like(self, message, user):
         message.liked_by.remove(user)
         message.save()
-
-    @database_sync_to_async
-    def remove_user_from_chat(self, chat_id):
-        user = self.scope["user"]
-        ChatParticipant.objects.filter(user=user, chat_id=chat_id).delete()
-
-    @database_sync_to_async
-    def add_user_to_chat(self, chat_id):
-        user = self.scope["user"]
-        if not ChatParticipant.objects.filter(user=user, chat_id=chat_id).exists():
-            ChatParticipant.objects.create(user=user, chat_id=chat_id)
 
     @database_sync_to_async
     def get_recipient(self, chat: Chat, user: User):

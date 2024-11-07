@@ -10,7 +10,7 @@ class SignupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['phone_number']
+        fields = ["phone_number"]
 
     def validate(self, attrs):
         if not attrs.get("phone_number"):
@@ -18,12 +18,14 @@ class SignupSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        phone_number = validated_data.get('phone_number')
+        phone_number = validated_data.get("phone_number")
 
         user, created = User.objects.get_or_create(phone_number=phone_number)
 
         if user.is_verified:
-            raise serializers.ValidationError({"phone_number": "User with this phone number already exists."})
+            raise serializers.ValidationError(
+                {"phone_number": "User with this phone number already exists."}
+            )
 
         otp_code, otp_secret = generate_otp(phone_number, expire_in=2 * 60)
         send_email_task.delay(otp_code)
@@ -37,9 +39,9 @@ class VerifyOTPSerializer(serializers.Serializer):
     otp_code = OtpCodeField()
 
     def validate(self, attrs):
-        phone_number = attrs.get('phone_number')
-        otp_code = attrs.get('otp_code')
-        otp_secret = self.context.get('otp_secret')
+        phone_number = attrs.get("phone_number")
+        otp_code = attrs.get("otp_code")
+        otp_secret = self.context.get("otp_secret")
 
         check_otp(phone_number, otp_code, otp_secret)
 
@@ -50,7 +52,7 @@ class LoginSerializer(serializers.Serializer):
     phone_number = PhoneNumberField()
 
     def validate(self, attrs):
-        phone_number = attrs.get('phone_number')
+        phone_number = attrs.get("phone_number")
         otp_code, otp_secret = generate_otp(phone_number, expire_in=5 * 60)
         send_email_task.delay(otp_code)
         send_sms_task.delay(phone_number, otp_code)
@@ -64,28 +66,52 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'phone_number', 'user_name', 'bio', 'birth_date', 'first_name', 'last_name']
-        read_only_fields = ['id', 'user', 'phone_number']
+        fields = [
+            "id",
+            "phone_number",
+            "user_name",
+            "bio",
+            "birth_date",
+            "first_name",
+            "last_name",
+        ]
+        read_only_fields = ["id", "user", "phone_number"]
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'phone_number', 'user_name', 'bio', 'birth_date', 'first_name', 'last_name']
-        read_only_fields = ['id', 'user', 'phone_number']
+        fields = [
+            "id",
+            "phone_number",
+            "user_name",
+            "bio",
+            "birth_date",
+            "first_name",
+            "last_name",
+        ]
+        read_only_fields = ["id", "user", "phone_number"]
 
     def validate(self, attrs):
         """Check if the user_name is unique only when provided."""
-        user_name = attrs.get('user_name')
+        user_name = attrs.get("user_name")
 
         # Skip validation if user_name is not being updated
         if user_name is not None:
             if not user_name.strip():
-                raise serializers.ValidationError({"user_name": "User name cannot be empty."})
+                raise serializers.ValidationError(
+                    {"user_name": "User name cannot be empty."}
+                )
 
             # Ensure the username is unique, excluding the current user
-            if User.objects.filter(user_name=user_name).exclude(id=self.instance.id).exists():
-                raise serializers.ValidationError({"user_name": "User with this user name already exists."})
+            if (
+                User.objects.filter(user_name=user_name)
+                .exclude(id=self.instance.id)
+                .exists()
+            ):
+                raise serializers.ValidationError(
+                    {"user_name": "User with this user name already exists."}
+                )
 
         return attrs
 
@@ -93,14 +119,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserAvatarSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserAvatar
-        fields = ['id', 'avatar']
-        read_only_fields = ['id']
+        fields = ["id", "avatar"]
+        read_only_fields = ["id"]
 
 
 class DeviceInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = DeviceInfo
-        fields = ['device_name', 'ip_address', 'last_login']
+        fields = ["device_name", "ip_address", "last_login"]
 
 
 class ContactSerializer(serializers.ModelSerializer):
@@ -108,28 +134,38 @@ class ContactSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Contact
-        fields = ['id', 'username', 'first_name', 'last_name', 'phone_number', 'phone']
-        read_only_fields = ['id', 'username', 'phone_number']
+        fields = ["id", "username", "first_name", "last_name", "phone_number", "phone"]
+        read_only_fields = ["id", "username", "phone_number"]
 
     def validate_phone(self, value):
         try:
             phone = User.objects.get(phone_number=value)
         except User.DoesNotExist:
-            raise serializers.ValidationError(f"User with phone number '{value}' does not exist.")
+            raise serializers.ValidationError(
+                f"User with phone number '{value}' does not exist."
+            )
         return phone
 
     def create(self, validated_data):
-        friend_phone_number = validated_data.pop('phone')
+        friend_phone_number = validated_data.pop("phone")
 
         try:
             friend = User.objects.get(phone_number=friend_phone_number)
         except User.DoesNotExist:
             raise serializers.ValidationError(
-                {"phone": [f"User with phone number '{friend_phone_number}' does not exist."]}
+                {
+                    "phone": [
+                        f"User with phone number '{friend_phone_number}' does not exist."
+                    ]
+                }
             )
 
-        if Contact.objects.filter(user=self.context['request'].user, friend=friend).exists():
-            raise serializers.ValidationError({"friend": [f"You already have {friend.phone_number} as a contact."]})
+        if Contact.objects.filter(
+            user=self.context["request"].user, friend=friend
+        ).exists():
+            raise serializers.ValidationError(
+                {"friend": [f"You already have {friend.phone_number} as a contact."]}
+            )
 
         contact = Contact.objects.create(friend=friend, **validated_data)
         return contact
@@ -154,4 +190,4 @@ class Verify2FASerializer(serializers.Serializer):
 class NotificationPreferenceSerializer(serializers.ModelSerializer):
     class Meta:
         model = NotificationPreference
-        fields = ['id', 'notifications_enabled', 'device_token']
+        fields = ["id", "notifications_enabled", "device_token"]

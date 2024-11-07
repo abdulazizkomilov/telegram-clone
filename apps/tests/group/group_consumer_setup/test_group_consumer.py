@@ -14,13 +14,18 @@ def test_group_consumer_exists():
 @pytest.mark.django_db
 def test_group_consumer_inheritance():
     """Check that GroupConsumer inherits from required classes."""
-    assert issubclass(GroupConsumer, AsyncJsonWebsocketConsumer), \
-        "GroupConsumer must inherit from AsyncJsonWebsocketConsumer."
+    assert issubclass(
+        GroupConsumer, AsyncJsonWebsocketConsumer
+    ), "GroupConsumer must inherit from AsyncJsonWebsocketConsumer."
 
 
 @pytest.mark.order(3)
 @pytest.mark.django_db
 def test_group_consumer_functions_exist():
     """Ensure connect and disconnect functions are implemented in GroupConsumer."""
-    assert hasattr(GroupConsumer, "connect"), "GroupConsumer is missing the 'connect' method."
-    assert hasattr(GroupConsumer, "disconnect"), "GroupConsumer is missing the 'disconnect' method."
+    assert hasattr(
+        GroupConsumer, "connect"
+    ), "GroupConsumer is missing the 'connect' method."
+    assert hasattr(
+        GroupConsumer, "disconnect"
+    ), "GroupConsumer is missing the 'disconnect' method."

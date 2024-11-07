@@ -13,7 +13,9 @@ def send_channel_scheduled_message():
     logger.info("Running scheduled message task.")
     try:
         now = timezone.now()
-        scheduled_messages = ChannelScheduledMessage.objects.filter(scheduled_time__lte=now, sent=False)
+        scheduled_messages = ChannelScheduledMessage.objects.filter(
+            scheduled_time__lte=now, sent=False
+        )
 
         if not scheduled_messages.exists():
             logger.info("No scheduled messages to send.")
@@ -27,7 +29,7 @@ def send_channel_scheduled_message():
                 user=scheduled_message.sender,
                 text=scheduled_message.text,
                 media=scheduled_message.media,
-                file=scheduled_message.file
+                file=scheduled_message.file,
             )
 
             scheduled_message.sent = True
@@ -35,13 +37,18 @@ def send_channel_scheduled_message():
 
             for membership in scheduled_message.channel.memberships.all():
                 try:
-                    user_notification_pref = getattr(membership.user, 'notification_preference', None)
+                    user_notification_pref = getattr(
+                        membership.user, "notification_preference", None
+                    )
 
-                    if user_notification_pref and user_notification_pref.notifications_enabled:
+                    if (
+                        user_notification_pref
+                        and user_notification_pref.notifications_enabled
+                    ):
                         send_push_notification.delay(
                             user_notification_pref.device_token,
                             f"New Message in {scheduled_message.channel.name}",
-                            message.text
+                            message.text,
                         )
                 except Exception as e:
                     logger.error(f"Error in send_scheduled_message task: {str(e)}")

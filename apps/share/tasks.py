@@ -20,25 +20,25 @@ def send_push_notification(self, token, title, body):
             token=token,
         )
         response = messaging.send(message)
-        logger.info('Successfully sent message: %s', response)
+        logger.info("Successfully sent message: %s", response)
     except Exception as e:
-        logger.error('Failed to send push notification: %s', str(e))
+        logger.error("Failed to send push notification: %s", str(e))
 
 
 @shared_task
 def send_email_task(otp_code: str):
-    message = render_to_string('emails/email_template.html', {
-        'email': 'abdulazizkomilov2001@gmail.com',
-        'message': otp_code
-    })
+    message = render_to_string(
+        "emails/email_template.html",
+        {"email": "abdulazizkomilov2001@gmail.com", "message": otp_code},
+    )
 
     email_message = EmailMessage(
-        'Your verification code!',
+        "Your verification code!",
         message,
         settings.EMAIL_HOST_USER,
-        ['abdulazizkomilov2001@gmail.com']
+        ["abdulazizkomilov2001@gmail.com"],
     )
-    email_message.content_subtype = 'html'
+    email_message.content_subtype = "html"
     try:
         email_message.send(fail_silently=False)
         return 200
@@ -49,17 +49,15 @@ def send_email_task(otp_code: str):
 
 @shared_task
 def send_sms_task(phone_number: str, otp_code: str):
-    account_sid = settings.config('ACCOUNT_SID', default='')
-    auth_token = settings.config('AUTH_TOKEN', default='')
-    service_sid = settings.config('SERVICE_SID', default='')
+    account_sid = settings.config("ACCOUNT_SID", default="")
+    auth_token = settings.config("AUTH_TOKEN", default="")
+    service_sid = settings.config("SERVICE_SID", default="")
 
     client = Client(account_sid, auth_token)
 
     try:
         message = client.messages.create(
-            body=f"Your OTP code is: {otp_code}",
-            from_=service_sid,
-            to=phone_number
+            body=f"Your OTP code is: {otp_code}", from_=service_sid, to=phone_number
         )
         print(f"Message SID: {message.sid}")
 

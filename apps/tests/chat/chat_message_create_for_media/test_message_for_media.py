@@ -21,10 +21,14 @@ class TestMessageListCreateView:
         }
         return get_channel_layer()
 
-    def test_list_messages(self, mocker, tokens, api_client, user_factory, chat_factory):
+    def test_list_messages(
+        self, mocker, tokens, api_client, user_factory, chat_factory
+    ):
         """Test that authenticated users can list messages."""
         mock_redis_client = MagicMock()
-        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+        mocker.patch.object(
+            TokenService, "get_redis_client", return_value=mock_redis_client
+        )
 
         user = user_factory.create()
         owner = user_factory.create()
@@ -40,18 +44,28 @@ class TestMessageListCreateView:
         response = client.get(f"/api/chats/{chat.id}/messages/")
 
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['text'] == "Hello!"
+        assert len(response.data["results"]) == 1
+        assert response.data["results"][0]["text"] == "Hello!"
 
-    def test_create_message(self, mocker, tokens, api_client, user_factory, chat_factory, channel_layer,
-                            generate_test_image,
-                            generate_test_file):
+    def test_create_message(
+        self,
+        mocker,
+        tokens,
+        api_client,
+        user_factory,
+        chat_factory,
+        channel_layer,
+        generate_test_image,
+        generate_test_file,
+    ):
         """Test that a message is created and group_send is called."""
         user = user_factory.create()
         chat = chat_factory.create(owner=user, user=user)
 
         mock_redis_client = MagicMock()
-        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+        mocker.patch.object(
+            TokenService, "get_redis_client", return_value=mock_redis_client
+        )
 
         access, _ = tokens(user)
         client = api_client(access)
@@ -67,11 +81,11 @@ class TestMessageListCreateView:
             "image": test_image,
         }
 
-        with patch.object(channel_layer, 'group_send', new_callable=AsyncMock) as mock_group_send:
+        with patch.object(
+            channel_layer, "group_send", new_callable=AsyncMock
+        ) as mock_group_send:
             response = client.post(
-                f"/api/chats/{chat.id}/messages/",
-                payload,
-                format='multipart'
+                f"/api/chats/{chat.id}/messages/", payload, format="multipart"
             )
 
             assert response.status_code == status.HTTP_201_CREATED
@@ -85,7 +99,7 @@ class TestMessageListCreateView:
             mock_group_send.assert_called_once()
 
             called_args = mock_group_send.call_args[0][1]
-            assert str(called_args['message_id']) == str(message.id)
+            assert str(called_args["message_id"]) == str(message.id)
 
     def test_create_message_without_auth(self, api_client, user_factory, chat_factory):
         """Test that a message cannot be created without authentication."""
@@ -96,6 +110,8 @@ class TestMessageListCreateView:
         client = api_client()
         payload = {"text": "Unauthorized message"}
 
-        response = client.post(f"/api/chats/{chat.id}/messages/", payload, format='json')
+        response = client.post(
+            f"/api/chats/{chat.id}/messages/", payload, format="json"
+        )
 
         assert response.status_code == status.HTTP_401_UNAUTHORIZED

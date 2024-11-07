@@ -38,17 +38,30 @@ def unverified_user_data(user_factory):
 @pytest.mark.parametrize(
     "user_fixture, expected_status, expected_response_keys",
     [
-        ("user_profile_data", status.HTTP_200_OK, ["user_name", "bio", "first_name", "last_name"]),
+        (
+            "user_profile_data",
+            status.HTTP_200_OK,
+            ["user_name", "bio", "first_name", "last_name"],
+        ),
         ("unverified_user_data", status.HTTP_403_FORBIDDEN, None),
     ],
 )
-def test_user_profile_retrieve(mocker, tokens, api_client, request, user_fixture, expected_status,
-                               expected_response_keys):
+def test_user_profile_retrieve(
+    mocker,
+    tokens,
+    api_client,
+    request,
+    user_fixture,
+    expected_status,
+    expected_response_keys,
+):
     """Test retrieving profile for both verified and unverified users."""
     user = request.getfixturevalue(user_fixture)
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
@@ -70,41 +83,54 @@ def test_user_profile_retrieve(mocker, tokens, api_client, request, user_fixture
     "update_data, expected_status, expected_error",
     [
         (
-                {
-                    "user_name": "updateduser",
-                    "bio": "Updated bio",
-                    "first_name": "UpdatedFirstName",
-                    "last_name": "UpdatedLastName",
-                },
-                status.HTTP_200_OK,
-                None,
+            {
+                "user_name": "updateduser",
+                "bio": "Updated bio",
+                "first_name": "UpdatedFirstName",
+                "last_name": "UpdatedLastName",
+            },
+            status.HTTP_200_OK,
+            None,
         ),
         (
-                {"bio": "Updated bio", "first_name": "UpdatedFirstName", "last_name": "UpdatedLastName"},
-                status.HTTP_200_OK,
-                None,
+            {
+                "bio": "Updated bio",
+                "first_name": "UpdatedFirstName",
+                "last_name": "UpdatedLastName",
+            },
+            status.HTTP_200_OK,
+            None,
         ),
         (
-                {"user_name": ""},
-                status.HTTP_400_BAD_REQUEST,
-                {"user_name": ["User name cannot be empty."]},
+            {"user_name": ""},
+            status.HTTP_400_BAD_REQUEST,
+            {"user_name": ["User name cannot be empty."]},
         ),
     ],
 )
-def test_user_profile_update(mocker, tokens, api_client, user_profile_data, update_data, expected_status,
-                             expected_error):
+def test_user_profile_update(
+    mocker,
+    tokens,
+    api_client,
+    user_profile_data,
+    update_data,
+    expected_status,
+    expected_error,
+):
     """Test updating profile data."""
     user = user_profile_data
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    response = client.patch(PROFILE_URL, data=update_data, format='json')
+    response = client.patch(PROFILE_URL, data=update_data, format="json")
     assert response.status_code == expected_status
 
     if expected_status == status.HTTP_200_OK:
@@ -123,7 +149,9 @@ def test_user_profile_update(mocker, tokens, api_client, user_profile_data, upda
         (True, status.HTTP_200_OK),
     ],
 )
-def test_user_profile_authentication(api_client, authenticated, expected_status, user_profile_data):
+def test_user_profile_authentication(
+    api_client, authenticated, expected_status, user_profile_data
+):
     """Test access to profile based on authentication status."""
     client = api_client()
 

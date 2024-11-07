@@ -16,13 +16,17 @@ from channels.layers import get_channel_layer
 
 User = get_user_model()
 
-application = ProtocolTypeRouter({
-    "websocket": JwtAuthMiddlewareStack(
-        URLRouter([
-            path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
-        ])
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "websocket": JwtAuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -39,7 +43,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestGroupConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -78,21 +81,35 @@ class TestGroupConsumer:
     async def connect_and_test(self, communicator, expected_connection):
         """Connect the communicator and verify if it matches the expected outcome."""
         connected, _ = await communicator.connect()
-        assert connected == expected_connection, f"Expected connection status to be {expected_connection}"
+        assert (
+            connected == expected_connection
+        ), f"Expected connection status to be {expected_connection}"
         return communicator
 
     @pytest.mark.parametrize(
         "user_scenario, expected_connection, expected_message",
         [
             ("owner", True, None),
-            ("not_member", True, "You are not a member of this group. Please join first.")
-        ]
+            (
+                "not_member",
+                True,
+                "You are not a member of this group. Please join first.",
+            ),
+        ],
     )
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer, user_scenario,
-                                   expected_connection, expected_message):
+    async def test_chat_connection(
+        self,
+        mock_jwt_decode,
+        mock_redis,
+        group,
+        channel_layer,
+        user_scenario,
+        expected_connection,
+        expected_message,
+    ):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -109,20 +126,22 @@ class TestGroupConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/groups/{group_instance.pk}/?token={token}"
+        )
 
         communicator = await self.connect_and_test(communicator, expected_connection)
 
         messages = await communicator.receive_json_from()
-        assert messages['action'] == "get_messages"
-        assert len(messages['messages']) == 0
-        users = await communicator.receive_json_from()
+        assert messages["action"] == "get_messages"
+        assert len(messages["messages"]) == 0
+        await communicator.receive_json_from()
 
         json_data = {
             "action": "create_message",
             "request_id": "1",
             "pk": str(group_instance.pk),
-            "data": {"text": "Hello, group!"}
+            "data": {"text": "Hello, group!"},
         }
 
         await communicator.send_json_to(json_data)
@@ -130,16 +149,18 @@ class TestGroupConsumer:
         data = await communicator.receive_json_from()
 
         if user_scenario == "not_member":
-            assert data['detail'] == expected_message, "Expected 'not a member' message for non-member"
+            assert (
+                data["detail"] == expected_message
+            ), "Expected 'not a member' message for non-member"
 
             await database_sync_to_async(group_instance.members.add)(member)
             await communicator.send_json_to(json_data)
             await asyncio.sleep(0.2)
             data = await communicator.receive_json_from()
 
-        assert data['action'] == "new_message", "Expected new_message action"
-        assert data['data']['text'] == "Hello, group!"
-        assert data['data']['group']['id'] == str(group_instance.pk)
+        assert data["action"] == "new_message", "Expected new_message action"
+        assert data["data"]["text"] == "Hello, group!"
+        assert data["data"]["group"]["id"] == str(group_instance.pk)
 
         await communicator.disconnect()
 

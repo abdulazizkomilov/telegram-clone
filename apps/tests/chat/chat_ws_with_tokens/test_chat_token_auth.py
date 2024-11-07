@@ -14,13 +14,17 @@ from channels.layers import get_channel_layer
 
 User = get_user_model()
 
-application = ProtocolTypeRouter({
-    "websocket": JwtAuthMiddlewareStack(
-        URLRouter([
-            path("ws/chats/<str:pk>/", ChatConsumer.as_asgi()),
-        ])
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "websocket": JwtAuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/chats/<str:pk>/", ChatConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -37,7 +41,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestChatConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -72,13 +75,21 @@ class TestChatConsumer:
         [
             ("owner", True),
             ("another_user", False),
-        ]
+        ],
     )
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, chat, channel_layer, user_scenario,
-                                   expected_connection, user_factory):
+    async def test_chat_connection(
+        self,
+        mock_jwt_decode,
+        mock_redis,
+        chat,
+        channel_layer,
+        user_scenario,
+        expected_connection,
+        user_factory,
+    ):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -95,10 +106,14 @@ class TestChatConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/chats/{chat_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/chats/{chat_instance.pk}/?token={token}"
+        )
 
         connected, _ = await communicator.connect()
-        assert connected == expected_connection, f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
+        assert (
+            connected == expected_connection
+        ), f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
 
         await communicator.disconnect()
 

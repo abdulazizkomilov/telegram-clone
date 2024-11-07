@@ -8,46 +8,44 @@ from core import settings
 User = get_user_model()
 
 if settings.ENABLE_ES:
+
     @registry.register_document
     class UserIndex(Document):
         class Index:
-            name = 'users'
+            name = "users"
 
         class Django:
             model = User
             fields = [
-                'phone_number',
-                'first_name',
-                'last_name',
+                "phone_number",
+                "first_name",
+                "last_name",
             ]
-
 
     @registry.register_document
     class GroupIndex(Document):
         class Index:
-            name = 'groups'
+            name = "groups"
 
         class Django:
             model = Group
-            fields = ['name']
-
+            fields = ["name"]
 
     @registry.register_document
     class ChannelIndex(Document):
         class Index:
-            name = 'channels'
+            name = "channels"
 
         class Django:
             model = Channel
-            fields = ['name', 'description']
+            fields = ["name", "description"]
 else:
+
     class UserIndex:
         pass
 
-
     class GroupIndex:
         pass
-
 
     class ChannelIndex:
         pass

@@ -27,7 +27,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestChatConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -58,9 +57,11 @@ class TestChatConsumer:
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_message_like(self, mock_jwt_decode, mock_redis, chat, channel_layer):
+    async def test_chat_message_like(
+        self, mock_jwt_decode, mock_redis, chat, channel_layer
+    ):
         """This test checks that the chat messaging system works correctly."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -71,63 +72,81 @@ class TestChatConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/chats/{chat_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/chats/{chat_instance.pk}/?token={token}"
+        )
 
         connected, _ = await communicator.connect()
         assert connected, "WebSocket connection failed with a valid token."
 
         messages = await communicator.receive_json_from()
-        assert messages['action'] == "get_messages", "Expected get_messages action"
-        assert len(messages['messages']) == 0, "Expected no messages"
+        assert messages["action"] == "get_messages", "Expected get_messages action"
+        assert len(messages["messages"]) == 0, "Expected no messages"
 
         users = await communicator.receive_json_from()
-        assert users['users'][0]['id'] == str(owner.id), "Expected user ID"
+        assert users["users"][0]["id"] == str(owner.id), "Expected user ID"
 
         json_message_data = {
             "action": "create_message",
             "request_id": "1",
             "pk": str(chat_instance.pk),
-            "data": {"text": "Hello, group!"}
+            "data": {"text": "Hello, group!"},
         }
 
         await communicator.send_json_to(json_message_data)
 
         new_message_data = await communicator.receive_json_from()
-        assert new_message_data['action'] == "new_message", "Expected new_message action"
-        assert new_message_data['data']['text'] == "Hello, group!", "Expected 'Hello, group!' message"
-        assert new_message_data['data']['chat']['id'] == str(chat_instance.pk), "Expected chat ID"
+        assert (
+            new_message_data["action"] == "new_message"
+        ), "Expected new_message action"
+        assert (
+            new_message_data["data"]["text"] == "Hello, group!"
+        ), "Expected 'Hello, group!' message"
+        assert new_message_data["data"]["chat"]["id"] == str(
+            chat_instance.pk
+        ), "Expected chat ID"
 
         like_data = {
             "action": "like_message",
             "request_id": "2",
             "pk": str(chat_instance.pk),
-            "message_id": new_message_data['data']['id']
+            "message_id": new_message_data["data"]["id"],
         }
 
         await communicator.send_json_to(like_data)
         await asyncio.sleep(0.2)
 
         liked_message_data = await communicator.receive_json_from()
-        assert liked_message_data['action'] == "message_liked", "Expected message_liked action"
-        assert liked_message_data['data']['liked_by'][0]['id'] == str(owner.id), "Expected liked_by ID"
-        assert liked_message_data['data']['id'] == new_message_data['data']['id'], "Expected message ID"
-        assert liked_message_data['data']['likes_count'] == 1, "Expected 1 like"
+        assert (
+            liked_message_data["action"] == "message_liked"
+        ), "Expected message_liked action"
+        assert liked_message_data["data"]["liked_by"][0]["id"] == str(
+            owner.id
+        ), "Expected liked_by ID"
+        assert (
+            liked_message_data["data"]["id"] == new_message_data["data"]["id"]
+        ), "Expected message ID"
+        assert liked_message_data["data"]["likes_count"] == 1, "Expected 1 like"
 
         remove_like_data = {
             "action": "unlike_message",
             "request_id": "2",
             "pk": str(chat_instance.pk),
-            "message_id": new_message_data['data']['id']
+            "message_id": new_message_data["data"]["id"],
         }
 
         await communicator.send_json_to(remove_like_data)
         await asyncio.sleep(0.2)
 
         removed_message_data = await communicator.receive_json_from()
-        assert removed_message_data['action'] == "message_unliked", "Expected message_unliked action"
-        assert removed_message_data['data']['id'] == new_message_data['data']['id'], "Expected message ID"
-        assert len(removed_message_data['data']['liked_by']) == 0, "Expected 0"
-        assert removed_message_data['data']['likes_count'] == 0, "Expected 0 likes"
+        assert (
+            removed_message_data["action"] == "message_unliked"
+        ), "Expected message_unliked action"
+        assert (
+            removed_message_data["data"]["id"] == new_message_data["data"]["id"]
+        ), "Expected message ID"
+        assert len(removed_message_data["data"]["liked_by"]) == 0, "Expected 0"
+        assert removed_message_data["data"]["likes_count"] == 0, "Expected 0 likes"
 
         await communicator.disconnect()
 

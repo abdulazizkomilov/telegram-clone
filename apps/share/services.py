@@ -20,11 +20,11 @@ class TokenService:
 
     @classmethod
     def add_token_to_redis(
-            cls,
-            user_id: uuid.UUID,
-            token: str,
-            token_type: TokenType,
-            expire_time: datetime.timedelta,
+        cls,
+        user_id: uuid.UUID,
+        token: str,
+        token_type: TokenType,
+        expire_time: datetime.timedelta,
     ) -> None:
         redis_client = cls.get_redis_client()
 
@@ -43,4 +43,3 @@ class TokenService:
         valid_tokens = redis_client.smembers(token_key)
         if valid_tokens is not None:
             redis_client.delete(token_key)
-

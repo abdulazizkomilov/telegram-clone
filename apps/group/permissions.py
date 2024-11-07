@@ -11,7 +11,7 @@ class CanUploadMediaPermission(permissions.BasePermission):
         if not request.user.is_authenticated:
             return False
 
-        group_id = view.kwargs.get('pk')
+        group_id = view.kwargs.get("pk")
 
         group_permission = GroupPermission.objects.get(group_id=group_id)
         if group_permission and group_permission.can_send_media:

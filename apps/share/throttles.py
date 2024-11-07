@@ -7,7 +7,7 @@ class Throttle(BaseThrottle):
     period = 60
 
     def get_cache_key(self, request, view):
-        return request.META.get('REMOTE_ADDR')
+        return request.META.get("REMOTE_ADDR")
 
     def allow_request(self, request, view):
         cache_key = self.get_cache_key(request, view)

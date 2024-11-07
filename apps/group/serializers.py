@@ -11,7 +11,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ['id', 'name', 'is_private', 'owner', 'created_at']
+        fields = ["id", "name", "is_private", "owner", "created_at"]
 
 
 class GroupMembershipSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class GroupMembershipSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ['id', 'name', 'is_private', 'owner', 'members', 'created_at']
+        fields = ["id", "name", "is_private", "owner", "members", "created_at"]
 
 
 class GroupMessageSerializer(serializers.ModelSerializer):
@@ -31,8 +31,18 @@ class GroupMessageSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GroupMessage
-        fields = ['id', 'group', 'sender', 'text', 'image', 'file', 'sent_at', 'liked_by', 'likes_count']
-        read_only_fields = ['id', 'sent_at', 'likes_count', 'liked_by']
+        fields = [
+            "id",
+            "group",
+            "sender",
+            "text",
+            "image",
+            "file",
+            "sent_at",
+            "liked_by",
+            "likes_count",
+        ]
+        read_only_fields = ["id", "sent_at", "likes_count", "liked_by"]
 
     def get_liked_by(self, obj):
         return UserSerializer(obj.liked_by.all(), many=True).data
@@ -43,11 +53,11 @@ class GroupMessageSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        if representation.get('image'):
-            representation['image'] = f"{SITE_HOST}{representation['image']}"
+        if representation.get("image"):
+            representation["image"] = f"{SITE_HOST}{representation['image']}"
 
-        if representation.get('file'):
-            representation['file'] = f"{SITE_HOST}{representation['file']}"
+        if representation.get("file"):
+            representation["file"] = f"{SITE_HOST}{representation['file']}"
 
         return representation
 
@@ -55,7 +65,7 @@ class GroupMessageSerializer(serializers.ModelSerializer):
 class ScheduledMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = GroupScheduledMessage
-        fields = ['groups', 'sender', 'text', 'scheduled_time']
+        fields = ["groups", "sender", "text", "scheduled_time"]
 
 
 class GroupAddMemberSerializer(serializers.ModelSerializer):
@@ -63,7 +73,7 @@ class GroupAddMemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Group
-        fields = ['members']
+        fields = ["members"]
 
 
 class GroupPermissionSerializer(serializers.ModelSerializer):
@@ -72,4 +82,4 @@ class GroupPermissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GroupPermission
-        fields = ['can_send_messages', 'can_send_media']
+        fields = ["can_send_messages", "can_send_media"]

@@ -5,8 +5,11 @@ from share.services import TokenService
 from user.models import Contact, User
 
 CONTACT_LIST_CREATE_URL = "/api/users/contacts/"
-CONTACT_DELETE_URL = lambda pk: f"/api/users/contacts/{pk}/"
 CONTACT_SYNC_URL = "/api/users/contacts/sync/"
+
+
+def contact_delete_url(pk):
+    return f"/api/users/contacts/{pk}/"
 
 
 @pytest.fixture
@@ -23,7 +26,9 @@ def friend():
 def contact(user, friend):
     user = user
     friend = friend
-    return Contact.objects.create(user=user, friend=friend, first_name="Friend", last_name="User")
+    return Contact.objects.create(
+        user=user, friend=friend, first_name="Friend", last_name="User"
+    )
 
 
 @pytest.mark.django_db
@@ -31,7 +36,9 @@ def test_list_contacts(mocker, tokens, api_client, contact):
     """Test listing contacts for the authenticated user."""
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(contact.user)
     client = api_client(access)
@@ -40,9 +47,9 @@ def test_list_contacts(mocker, tokens, api_client, contact):
 
     response = client.get(CONTACT_LIST_CREATE_URL)
     assert response.status_code == status.HTTP_200_OK
-    assert len(response.data['results']) == 1
-    assert response.data['results'][0]["first_name"] == "Friend"
-    assert response.data['results'][0]["last_name"] == "User"
+    assert len(response.data["results"]) == 1
+    assert response.data["results"][0]["first_name"] == "Friend"
+    assert response.data["results"][0]["last_name"] == "User"
 
 
 @pytest.mark.django_db
@@ -50,7 +57,9 @@ def test_create_contact(mocker, api_client, tokens, user, friend):
     """Test creating a new contact."""
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
@@ -76,14 +85,16 @@ def test_delete_contact(mocker, api_client, tokens, contact):
     user = contact.user
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    response = client.delete(CONTACT_DELETE_URL(contact.id))
+    response = client.delete(contact_delete_url(contact.id))
     assert response.status_code == status.HTTP_204_NO_CONTENT
     assert Contact.objects.count() == 0
 
@@ -94,14 +105,16 @@ def test_delete_contact_not_owned(mocker, api_client, tokens, user_factory, cont
     other_user = user_factory.create(username="otheruser", phone_number="+998927654121")
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(other_user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    response = client.delete(CONTACT_DELETE_URL(contact.id))
+    response = client.delete(contact_delete_url(contact.id))
     assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
@@ -110,7 +123,9 @@ def test_sync_contacts(mocker, api_client, tokens, user, friend):
     """Test syncing contacts."""
 
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
@@ -118,7 +133,11 @@ def test_sync_contacts(mocker, api_client, tokens, user, friend):
     mock_redis_client.smembers.return_value = {access.encode()}
 
     data = [
-        {"phone_number": friend.phone_number, "first_name": friend.first_name, "last_name": friend.last_name},
+        {
+            "phone_number": friend.phone_number,
+            "first_name": friend.first_name,
+            "last_name": friend.last_name,
+        },
         {"phone_number": "+99899234444", "first_name": "Not", "last_name": "Found"},
     ]
 

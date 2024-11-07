@@ -16,13 +16,17 @@ from channels.layers import get_channel_layer
 
 User = get_user_model()
 
-application = ProtocolTypeRouter({
-    "websocket": JwtAuthMiddlewareStack(
-        URLRouter([
-            path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
-        ])
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "websocket": JwtAuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -39,7 +43,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestGroupConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -76,9 +79,11 @@ class TestGroupConsumer:
         return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
 
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer):
+    async def test_chat_connection(
+        self, mock_jwt_decode, mock_redis, group, channel_layer
+    ):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -89,21 +94,23 @@ class TestGroupConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/groups/{group_instance.pk}/?token={token}"
+        )
 
         connected, _ = await communicator.connect()
         assert connected, "Connection should succeed with valid token."
 
         messages = await communicator.receive_json_from()
-        assert messages['action'] == "get_messages"
-        assert len(messages['messages']) == 0
-        users = await communicator.receive_json_from()
+        assert messages["action"] == "get_messages"
+        assert len(messages["messages"]) == 0
+        await communicator.receive_json_from()
 
         json_data = {
             "action": "create_message",
             "request_id": "1",
             "pk": str(group_instance.pk),
-            "data": {"text": "Hello, group!"}
+            "data": {"text": "Hello, group!"},
         }
         await communicator.send_json_to(json_data)
         await asyncio.sleep(0.2)
@@ -113,32 +120,42 @@ class TestGroupConsumer:
             "action": "like_message",
             "request_id": "2",
             "pk": str(group_instance.pk),
-            "message_id": data['data']['id']
+            "message_id": data["data"]["id"],
         }
 
         await communicator.send_json_to(like_data)
         await asyncio.sleep(0.2)
 
         liked_message_data = await communicator.receive_json_from()
-        assert liked_message_data['action'] == "message_liked", "Expected message_liked action"
-        assert liked_message_data['data']['liked_by'][0]['id'] == str(owner.id), "Expected liked_by ID"
-        assert liked_message_data['data']['id'] == data['data']['id'], "Expected message ID"
-        assert liked_message_data['data']['likes_count'] == 1, "Expected 1 like"
+        assert (
+            liked_message_data["action"] == "message_liked"
+        ), "Expected message_liked action"
+        assert liked_message_data["data"]["liked_by"][0]["id"] == str(
+            owner.id
+        ), "Expected liked_by ID"
+        assert (
+            liked_message_data["data"]["id"] == data["data"]["id"]
+        ), "Expected message ID"
+        assert liked_message_data["data"]["likes_count"] == 1, "Expected 1 like"
 
         remove_like_data = {
             "action": "unlike_message",
             "request_id": "2",
             "pk": str(group_instance.pk),
-            "message_id": data['data']['id']
+            "message_id": data["data"]["id"],
         }
 
         await communicator.send_json_to(remove_like_data)
         await asyncio.sleep(0.2)
 
         removed_message_data = await communicator.receive_json_from()
-        assert removed_message_data['action'] == "message_unliked", "Expected message_unliked action"
-        assert removed_message_data['data']['id'] == data['data']['id'], "Expected message ID"
-        assert len(removed_message_data['data']['liked_by']) == 0, "Expected 0"
-        assert removed_message_data['data']['likes_count'] == 0, "Expected 0 likes"
+        assert (
+            removed_message_data["action"] == "message_unliked"
+        ), "Expected message_unliked action"
+        assert (
+            removed_message_data["data"]["id"] == data["data"]["id"]
+        ), "Expected message ID"
+        assert len(removed_message_data["data"]["liked_by"]) == 0, "Expected 0"
+        assert removed_message_data["data"]["likes_count"] == 0, "Expected 0 likes"
 
         await communicator.disconnect()

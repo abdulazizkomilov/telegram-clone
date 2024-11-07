@@ -14,13 +14,17 @@ from channels.layers import get_channel_layer
 
 User = get_user_model()
 
-application = ProtocolTypeRouter({
-    "websocket": JwtAuthMiddlewareStack(
-        URLRouter([
-            path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
-        ])
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "websocket": JwtAuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -37,7 +41,6 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestGroupConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
@@ -73,13 +76,21 @@ class TestGroupConsumer:
             ("owner", True),
             ("not_member", True),
             ("another_user_in_private_group", False),
-        ]
+        ],
     )
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    async def test_chat_connection(self, mock_jwt_decode, mock_redis, group, channel_layer, user_scenario,
-                                   expected_connection, user_factory):
+    async def test_chat_connection(
+        self,
+        mock_jwt_decode,
+        mock_redis,
+        group,
+        channel_layer,
+        user_scenario,
+        expected_connection,
+        user_factory,
+    ):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -103,10 +114,14 @@ class TestGroupConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/groups/{group_instance.pk}/?token={token}"
+        )
 
         connected, _ = await communicator.connect()
-        assert connected == expected_connection, f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
+        assert (
+            connected == expected_connection
+        ), f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
 
         await communicator.disconnect()
 

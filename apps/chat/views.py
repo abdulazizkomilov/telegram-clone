@@ -19,7 +19,7 @@ class ChatListCreateView(generics.ListCreateAPIView):
 class ChatView(generics.RetrieveDestroyAPIView):
     serializer_class = ChatCreateSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ['get', 'delete']
+    http_method_names = ["get", "delete"]
 
     def get_queryset(self):
         user = self.request.user
@@ -31,10 +31,10 @@ class MessageListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Message.objects.filter(chat_id=self.kwargs['pk'])
+        return Message.objects.filter(chat_id=self.kwargs["pk"])
 
     def perform_create(self, serializer):
-        chat_id = self.kwargs['pk']
+        chat_id = self.kwargs["pk"]
         chat = Chat.objects.get(id=chat_id)
 
         message = serializer.save(sender=self.request.user, chat=chat)
@@ -42,17 +42,17 @@ class MessageListCreateView(generics.ListCreateAPIView):
         if message.file or message.image:
             channel_layer = get_channel_layer()
             async_to_sync(channel_layer.group_send)(
-                f'chat_{message.chat.id}',
+                f"chat_{message.chat.id}",
                 {
-                    'type': 'chat_message',
-                    'message_id': str(message.id),
-                    'sender': {
-                        'id': str(message.sender.id),
-                        'user_name': str(message.sender.username),
+                    "type": "chat_message",
+                    "message_id": str(message.id),
+                    "sender": {
+                        "id": str(message.sender.id),
+                        "user_name": str(message.sender.username),
                     },
-                    'text': message.text,
-                    'image': message.image.url if message.image.url else None,
-                    'file': message.file if message.file else None,
-                    'sent_at': message.sent_at.isoformat(),
-                }
+                    "text": message.text,
+                    "image": message.image.url if message.image.url else None,
+                    "file": message.file if message.file else None,
+                    "sent_at": message.sent_at.isoformat(),
+                },
             )

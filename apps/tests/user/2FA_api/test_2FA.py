@@ -12,16 +12,31 @@ User = get_user_model()
 @pytest.mark.parametrize(
     "data, expected_status, expected_detail",
     [
-        ({"type": True, "otp_secret": "lkj98sKLl3f3lkd"}, status.HTTP_200_OK, {"detail": "2FA enabled."}),
-        ({"type": True, "otp_secret": "lk"}, status.HTTP_400_BAD_REQUEST,
-         {"detail": "OTP secret must be at least 8 characters long."}),
-        ({"type": False, "otp_secret": ""}, status.HTTP_200_OK, {"detail": "2FA disabled."}),
-    ]
+        (
+            {"type": True, "otp_secret": "lkj98sKLl3f3lkd"},
+            status.HTTP_200_OK,
+            {"detail": "2FA enabled."},
+        ),
+        (
+            {"type": True, "otp_secret": "lk"},
+            status.HTTP_400_BAD_REQUEST,
+            {"detail": "OTP secret must be at least 8 characters long."},
+        ),
+        (
+            {"type": False, "otp_secret": ""},
+            status.HTTP_200_OK,
+            {"detail": "2FA disabled."},
+        ),
+    ],
 )
-def test_enable_2fa(mocker, tokens, api_client, user, data, expected_status, expected_detail):
+def test_enable_2fa(
+    mocker, tokens, api_client, user, data, expected_status, expected_detail
+):
     """Test enabling and disabling 2FA for a user."""
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
@@ -50,23 +65,19 @@ def test_enable_2fa(mocker, tokens, api_client, user, data, expected_status, exp
 def test_disable_2fa_success(mocker, tokens, api_client, user):
     """Test disabling 2FA for a user."""
     mock_redis_client = MagicMock()
-    mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+    mocker.patch.object(
+        TokenService, "get_redis_client", return_value=mock_redis_client
+    )
 
     access, _ = tokens(user)
     client = api_client(access)
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    data = {
-        "type": True,
-        "otp_secret": "some-otp-secret"
-    }
+    data = {"type": True, "otp_secret": "some-otp-secret"}
     client.post("/api/users/2fa/", data, format="json")
 
-    data = {
-        "type": False,
-        "otp_secret": ""
-    }
+    data = {"type": False, "otp_secret": ""}
 
     response = client.post("/api/users/2fa/", data, format="json", user=user)
 

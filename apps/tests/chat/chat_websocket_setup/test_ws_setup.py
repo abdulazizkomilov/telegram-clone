@@ -14,13 +14,18 @@ def test_chat_consumer_exists():
 @pytest.mark.django_db
 def test_chat_consumer_inheritance():
     """Check that ChatConsumer inherits from required classes."""
-    assert issubclass(ChatConsumer, AsyncJsonWebsocketConsumer), \
-        "ChatConsumer must inherit from AsyncJsonWebsocketConsumer."
+    assert issubclass(
+        ChatConsumer, AsyncJsonWebsocketConsumer
+    ), "ChatConsumer must inherit from AsyncJsonWebsocketConsumer."
 
 
 @pytest.mark.order(3)
 @pytest.mark.django_db
 def test_chat_consumer_functions_exist():
     """Ensure connect and disconnect functions are implemented in ChatConsumer."""
-    assert hasattr(ChatConsumer, "connect"), "ChatConsumer is missing the 'connect' method."
-    assert hasattr(ChatConsumer, "disconnect"), "ChatConsumer is missing the 'disconnect' method."
+    assert hasattr(
+        ChatConsumer, "connect"
+    ), "ChatConsumer is missing the 'connect' method."
+    assert hasattr(
+        ChatConsumer, "disconnect"
+    ), "ChatConsumer is missing the 'disconnect' method."

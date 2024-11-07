@@ -7,34 +7,43 @@ from share.services import TokenService
 
 @pytest.mark.django_db
 class TestGroupPermissionSerializer:
-    @pytest.mark.parametrize("data, expected_status", [
-        ({"can_send_messages": False, "can_send_media": True}, status.HTTP_200_OK),
-        ({"can_send_messages": "invalid"}, status.HTTP_400_BAD_REQUEST),
-        ({"can_send_media": None}, status.HTTP_400_BAD_REQUEST),
-        ({"can_send_messages": None, "can_send_media": None}, status.HTTP_400_BAD_REQUEST)
-    ])
-    def test_group_permission_update(self, mocker, api_client, tokens, user_factory, data, expected_status):
+    @pytest.mark.parametrize(
+        "data, expected_status",
+        [
+            ({"can_send_messages": False, "can_send_media": True}, status.HTTP_200_OK),
+            ({"can_send_messages": "invalid"}, status.HTTP_400_BAD_REQUEST),
+            ({"can_send_media": None}, status.HTTP_400_BAD_REQUEST),
+            (
+                {"can_send_messages": None, "can_send_media": None},
+                status.HTTP_400_BAD_REQUEST,
+            ),
+        ],
+    )
+    def test_group_permission_update(
+        self, mocker, api_client, tokens, user_factory, data, expected_status
+    ):
         user = user_factory()
 
         mock_redis_client = MagicMock()
-        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+        mocker.patch.object(
+            TokenService, "get_redis_client", return_value=mock_redis_client
+        )
 
         access, _ = tokens(user)
         client = api_client(access)
 
         mock_redis_client.smembers.return_value = {access.encode()}
 
-        group_data = {
-            'name': 'New Group',
-            'is_private': True
-        }
+        group_data = {"name": "New Group", "is_private": True}
 
-        response = client.post('/api/groups/', group_data, format='json')
+        response = client.post("/api/groups/", group_data, format="json")
         assert response.status_code == status.HTTP_201_CREATED
 
-        group = Group.objects.get(id=response.data['id'])
+        group = Group.objects.get(id=response.data["id"])
 
-        response = client.patch(f'/api/groups/{group.id}/permissions/', data, format='json')
+        response = client.patch(
+            f"/api/groups/{group.id}/permissions/", data, format="json"
+        )
 
         assert response.status_code == expected_status
 

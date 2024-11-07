@@ -31,13 +31,13 @@ class TestSendScheduledMessageTask:
             sender=owner,
             text="Scheduled message text",
             scheduled_time=timezone.now() - timezone.timedelta(minutes=1),
-            sent=False
+            sent=False,
         )
 
     @patch("chat.tasks.Message.objects.create")
     @patch("chat.tasks.get_channel_layer")
     def test_send_scheduled_message(
-            self, mock_get_channel_layer, mock_message_create, scheduled_message
+        self, mock_get_channel_layer, mock_message_create, scheduled_message
     ):
         mock_message = MagicMock(spec=Message)
         mock_message_create.return_value = mock_message
@@ -62,10 +62,7 @@ class TestSendScheduledMessageTask:
 
         mock_channel_layer.group_send.assert_called_once_with(
             f"chat__{scheduled_message.chat.id}",
-            {
-                "type": "chat_message",
-                "text": serializer.data
-            }
+            {"type": "chat_message", "text": serializer.data},
         )
 
     @patch("chat.tasks.get_task_logger")

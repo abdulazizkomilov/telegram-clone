@@ -27,7 +27,9 @@ class TestJoinLeaveGroupView:
     @pytest.fixture
     def setup(self, mocker, api_client, tokens, user_factory, group_data):
         mock_redis_client = MagicMock()
-        mocker.patch.object(TokenService, 'get_redis_client', return_value=mock_redis_client)
+        mocker.patch.object(
+            TokenService, "get_redis_client", return_value=mock_redis_client
+        )
 
         self.user = user_factory.create()
         self.group, self.owner = group_data

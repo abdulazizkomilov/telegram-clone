@@ -17,13 +17,17 @@ from user.models import NotificationPreference
 
 User = get_user_model()
 
-application = ProtocolTypeRouter({
-    "websocket": JwtAuthMiddlewareStack(
-        URLRouter([
-            path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
-        ])
-    ),
-})
+application = ProtocolTypeRouter(
+    {
+        "websocket": JwtAuthMiddlewareStack(
+            URLRouter(
+                [
+                    path("ws/groups/<str:pk>/", GroupConsumer.as_asgi()),
+                ]
+            )
+        ),
+    }
+)
 
 
 @pytest.fixture
@@ -40,13 +44,13 @@ def channel_layer(settings):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.asyncio
 class TestGroupConsumer:
-
     @database_sync_to_async
     def create_user(self, user_factory):
         """Create a user using the provided user factory."""
         user = user_factory.create(is_2fa_enabled=True, is_online=False)
-        notification = NotificationPreference.objects.create(user=user, notifications_enabled=True,
-                                                             device_token="fake_device_token")
+        NotificationPreference.objects.create(
+            user=user, notifications_enabled=True, device_token="fake_device_token"
+        )
         return user
 
     @database_sync_to_async
@@ -82,22 +86,32 @@ class TestGroupConsumer:
     async def connect_and_test(self, communicator, expected_connection):
         """Connect the communicator and verify if it matches the expected outcome."""
         connected, _ = await communicator.connect()
-        assert connected == expected_connection, f"Expected connection status to be {expected_connection}"
+        assert (
+            connected == expected_connection
+        ), f"Expected connection status to be {expected_connection}"
         return communicator
 
     @pytest.mark.parametrize(
         "user_scenario, expected_connection, expected_message",
         [
             ("owner", True, None),
-        ]
+        ],
     )
     @pytest.mark.asyncio
-    @patch('redis.asyncio.client.Redis')
+    @patch("redis.asyncio.client.Redis")
     @patch("share.middleware.jwt.decode")
-    @patch('share.tasks.send_push_notification.delay')
-    async def test_chat_connection(self, mock_send_push_notification, mock_jwt_decode, mock_redis, group, channel_layer,
-                                   user_scenario,
-                                   expected_connection, expected_message):
+    @patch("share.tasks.send_push_notification.delay")
+    async def test_chat_connection(
+        self,
+        mock_send_push_notification,
+        mock_jwt_decode,
+        mock_redis,
+        group,
+        channel_layer,
+        user_scenario,
+        expected_connection,
+        expected_message,
+    ):
         """Test WebSocket connection based on user scenario."""
         mock_connection = AsyncMock()
         mock_redis.return_value = mock_connection
@@ -110,33 +124,35 @@ class TestGroupConsumer:
         mock_jwt_decode.return_value = token_payload
 
         token = self.generate_jwt_token(token_payload)
-        communicator = WebsocketCommunicator(application, f"/ws/groups/{group_instance.pk}/?token={token}")
+        communicator = WebsocketCommunicator(
+            application, f"/ws/groups/{group_instance.pk}/?token={token}"
+        )
 
         communicator = await self.connect_and_test(communicator, expected_connection)
 
         messages = await communicator.receive_json_from()
-        assert messages['action'] == "get_messages"
-        assert len(messages['messages']) == 0
-        users = await communicator.receive_json_from()
+        assert messages["action"] == "get_messages"
+        assert len(messages["messages"]) == 0
+        await communicator.receive_json_from()
 
         json_data = {
             "action": "create_message",
             "request_id": "1",
             "pk": str(group_instance.pk),
-            "data": {"text": "Hello, group!"}
+            "data": {"text": "Hello, group!"},
         }
 
         await communicator.send_json_to(json_data)
         await asyncio.sleep(0.2)
         data = await communicator.receive_json_from()
 
-        assert data['action'] == "new_message", "Expected new_message action"
-        assert data['data']['text'] == "Hello, group!"
+        assert data["action"] == "new_message", "Expected new_message action"
+        assert data["data"]["text"] == "Hello, group!"
 
         mock_send_push_notification.assert_called_once_with(
             token="fake_device_token",
             title="New Message in Group",
-            body="Hello, group!"
+            body="Hello, group!",
         )
 
         await communicator.disconnect()

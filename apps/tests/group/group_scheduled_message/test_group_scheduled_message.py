@@ -26,13 +26,13 @@ class TestSendGroupScheduledMessageTask:
             sender=user,
             text="Scheduled group message text",
             scheduled_time=timezone.now() - timezone.timedelta(minutes=1),
-            sent=False
+            sent=False,
         )
 
     @patch("group.tasks.GroupMessage.objects.create")
     @patch("group.tasks.get_channel_layer")
     def test_send_group_scheduled_message(
-            self, mock_get_channel_layer, mock_message_create, scheduled_message
+        self, mock_get_channel_layer, mock_message_create, scheduled_message
     ):
         mock_message = MagicMock(spec=GroupMessage)
         mock_message_create.return_value = mock_message
@@ -54,10 +54,7 @@ class TestSendGroupScheduledMessageTask:
         serializer = GroupMessageSerializer(mock_message)
         mock_channel_layer.group_send.assert_called_once_with(
             f"group__{scheduled_message.group.id}",
-            {
-                "type": "group_message",
-                "text": serializer.data
-            }
+            {"type": "group_message", "text": serializer.data},
         )
 
     @patch("group.tasks.get_task_logger")

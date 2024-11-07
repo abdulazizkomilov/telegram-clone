@@ -6,11 +6,11 @@ from user.models import User
 
 
 class ChatParticipantSerializer(serializers.ModelSerializer):
-    user = serializers.CharField(source='user.id')
+    user = serializers.CharField(source="user.id")
 
     class Meta:
         model = ChatParticipant
-        fields = ['user', 'joined_at']
+        fields = ["user", "joined_at"]
 
 
 class ChatSerializer(serializers.ModelSerializer):
@@ -20,7 +20,7 @@ class ChatSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Chat
-        fields = ['id', 'owner', 'user', 'created_at', 'participants']
+        fields = ["id", "owner", "user", "created_at", "participants"]
 
 
 class ChatCreateSerializer(serializers.ModelSerializer):
@@ -32,8 +32,16 @@ class ChatCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Chat
-        fields = ['id', 'owner', 'user', 'created_at', 'participants', 'owner_id', 'user_id']
-        read_only_fields = ['id', 'created_at', 'participants']
+        fields = [
+            "id",
+            "owner",
+            "user",
+            "created_at",
+            "participants",
+            "owner_id",
+            "user_id",
+        ]
+        read_only_fields = ["id", "created_at", "participants"]
 
     def validate(self, attrs):
         owner_id = attrs.get("owner_id")
@@ -49,7 +57,9 @@ class ChatCreateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("User does not exist.")
 
         if Chat.objects.filter(owner_id=owner_id, user_id=user_id).exists():
-            raise serializers.ValidationError("Chat between these users already exists.")
+            raise serializers.ValidationError(
+                "Chat between these users already exists."
+            )
 
         return attrs
 
@@ -59,13 +69,21 @@ class MessageSerializer(serializers.ModelSerializer):
     sender = UserSerializer(read_only=True)
     liked_by = serializers.SerializerMethodField()
     likes_count = serializers.SerializerMethodField()
-    id = serializers.UUIDField(format='hex', required=False, read_only=True)
+    id = serializers.UUIDField(format="hex", required=False, read_only=True)
 
     class Meta:
         model = Message
         fields = [
-            'id', 'chat', 'sender', 'text', 'image', 'file', 'sent_at',
-            'is_read', 'liked_by', 'likes_count'
+            "id",
+            "chat",
+            "sender",
+            "text",
+            "image",
+            "file",
+            "sent_at",
+            "is_read",
+            "liked_by",
+            "likes_count",
         ]
 
     def get_liked_by(self, obj):
@@ -77,11 +95,11 @@ class MessageSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         representation = super().to_representation(instance)
 
-        if representation.get('image'):
-            representation['image'] = f"{SITE_HOST}{representation['image']}"
+        if representation.get("image"):
+            representation["image"] = f"{SITE_HOST}{representation['image']}"
 
-        if representation.get('file'):
-            representation['file'] = f"{SITE_HOST}{representation['file']}"
+        if representation.get("file"):
+            representation["file"] = f"{SITE_HOST}{representation['file']}"
 
         return representation
 
@@ -89,4 +107,4 @@ class MessageSerializer(serializers.ModelSerializer):
 class ScheduledMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ScheduledMessage
-        fields = ['chat', 'sender', 'text', 'scheduled_time']
+        fields = ["chat", "sender", "text", "scheduled_time"]
