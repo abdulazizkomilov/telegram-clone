@@ -1,0 +1,100 @@
+name: Telegram Clone Project CI/CD
+on:
+  workflow_dispatch:
+    inputs:
+      tests_path:
+        description: 'Tests path'
+        required: false
+        default: ''
+      github_feedback_id:
+        description: 'Github feedback id'
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy and run tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Clean environment
+        run: |
+          rm -rf original-repo
+          rm -rf forked-repo
+
+      - name: Send a signal to the webhook that the job has started.
+        run: |
+          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.event.inputs.github_feedback_id }}/' \
+          --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
+          --form 'github_username=${{ github.actor }}' \
+          --form 'action_run_id=${{ github.run_id }}' \
+          --form 'status=started'
+
+      - name: Checkout original repository
+        uses: actions/checkout@v3
+        with:
+          repository: abdulazizkomilov/telegram-clone
+          path: original-repo
+          ref: main
+          fetch-depth: 0
+
+      - name: Checkout forked repository
+        uses: actions/checkout@v3
+        with:
+          path: forked-repo
+          ref: main
+          fetch-depth: 0
+
+      - name: Move tests folder from original to forked
+        run: |
+          rm -rf forked-repo/apps/tests
+          mv original-repo/apps/tests forked-repo/apps/
+          rm -rf original-repo
+
+      - name: Create .env file from .env.example
+        working-directory: forked-repo
+        run: cp .env.example .env
+
+      - name: Set environment variables
+        working-directory: forked-repo
+        run: export $(grep -v '^#' .env | xargs)
+
+      - name: Build and run application via docker compose
+        working-directory: forked-repo
+        run: |
+          docker compose up -d --build
+          sleep 5s
+          docker ps -a
+          sleep 5s
+          docker logs telegram_app
+
+      - name: Check application health
+        run: |
+          sleep 5s
+          curl -v http://127.0.0.1:8000/health/
+
+      - name: Run application tests via pytest
+        working-directory: forked-repo
+        run: docker compose exec telegram_app pytest ${{ github.event.inputs.tests_path }} --cache-clear -vv --json-report --json-report-file=./reports/unittest-checker-report.json --json-report-indent=2
+        continue-on-error: true
+
+      - name: Upload created pytest report file as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: unittest-checker-artifact
+          path: forked-repo/reports/unittest-checker-report.json
+
+      - name: Send a signal to the webhook that the job has finished.
+        if: always()
+        run: |
+          status=${{ job.status }}
+          if [ "$status" == "success" ]; then
+            status="completed"
+          else
+            status="failed"
+          fi
+          curl -X PUT --location 'https://api-dev.mohirpool.uz/api/site/accelerators/code-reviews/github-feedbacks/${{ github.event.inputs.github_feedback_id }}/' \
+          --header 'X-API-KEY: ${{ secrets.X_API_KEY }}' \
+          --form 'github_username=${{ github.actor }}' \
+          --form 'action_run_id=${{ github.run_id }}' \
+          --form "status=$status"
