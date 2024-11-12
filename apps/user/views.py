@@ -72,9 +72,10 @@ class VerifyView(generics.UpdateAPIView):
 
         phone_number = serializer.validated_data["phone_number"]
         user = User.objects.get(phone_number=phone_number)
-        user.is_verified = True
-        user.is_active = True
-        user.save()
+        if not user.is_verified:
+            user.is_verified = True
+            user.is_active = True
+            user.save()
 
         if user.is_2fa_enabled:
             return Response(
@@ -85,8 +86,6 @@ class VerifyView(generics.UpdateAPIView):
                 status=status.HTTP_200_OK,
             )
 
-        # redis_conn.delete(f"{phone_number}:otp")
-        # redis_conn.delete(f"{phone_number}:otp_secret")
         tokens = UserService.create_tokens(user)
         return Response(tokens, status=status.HTTP_200_OK)
 

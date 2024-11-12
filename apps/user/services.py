@@ -3,7 +3,6 @@ from rest_framework.exceptions import ValidationError
 from django.conf import settings
 from django.contrib.auth import authenticate
 from django.utils import timezone
-from django.utils.translation import gettext_lazy as _
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from share.enums import TokenType
@@ -13,14 +12,8 @@ from user.models import User
 
 class UserService:
     @classmethod
-    def authenticate(
-        cls, phone_number: str, password: str, quiet=False
-    ) -> Union[ValidationError, User, None]:
-        user = authenticate(username=phone_number, password=password)
-        if user is None or not user.check_password(password):
-            if quiet:
-                return None
-            raise ValidationError(_("Login or password is incorrect"), code=400)
+    def authenticate(cls, phone_number: str) -> Union[ValidationError, User, None]:
+        user = authenticate(username=phone_number, password=None)
         user.last_login = timezone.now()
         user.save(update_fields=["last_login"])
         return user
