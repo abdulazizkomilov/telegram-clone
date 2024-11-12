@@ -1,4 +1,5 @@
 import pytest
+from django.utils import timezone
 from django.conf import settings
 from django.contrib.auth import get_user_model
 
@@ -51,6 +52,7 @@ def test_custom_user_model():
     # Create a user instance
     user = User.objects.create(
         phone_number="+998930000000",
+        username="+998930000000",
         first_name="Abdulaziz",
         last_name="Komilov",
         user_name="abdulaziz",
@@ -59,6 +61,10 @@ def test_custom_user_model():
         is_verified=True,
         is_active=True,
         is_online=True,
+        date_joined=timezone.now(),
+        last_seen=timezone.now(),
+        otp_secret="123456",
+        is_2fa_enabled=True,
     )
 
     # Assertions to validate user creation
@@ -75,3 +81,6 @@ def test_custom_user_model():
     assert user.bio == "bio", f"{MODEL_NAME} model bio not set"
     assert user.birth_date == "2000-01-01", f"{MODEL_NAME} model birth_date not set"
     assert user.created_at is not None, f"{MODEL_NAME} model created_at not set"
+    assert user.last_seen is not None, f"{MODEL_NAME} model last_seen not set"
+    assert user.otp_secret == "123456", f"{MODEL_NAME} model otp_secret not set"
+    assert user.is_2fa_enabled is True, f"{MODEL_NAME} model is_2fa_enabled not set"
