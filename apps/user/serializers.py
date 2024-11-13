@@ -138,36 +138,35 @@ class ContactSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "username", "phone_number"]
 
     def validate_phone(self, value):
-        try:
-            phone = User.objects.get(phone_number=value)
-        except User.DoesNotExist:
+        """
+        Validate that a user with this phone number exists.
+        """
+        user = User.objects.filter(phone_number=value).first()
+        if user == self.context["request"].user:
+            raise serializers.ValidationError("You cannot add yourself as a contact.")
+        if not user:
             raise serializers.ValidationError(
                 f"User with phone number '{value}' does not exist."
             )
-        return phone
+        return user
 
     def create(self, validated_data):
-        friend_phone_number = validated_data.pop("phone")
+        friend_user = validated_data.pop("phone")
 
-        try:
-            friend = User.objects.get(phone_number=friend_phone_number)
-        except User.DoesNotExist:
+        if Contact.objects.filter(
+            user=self.context["request"].user, friend=friend_user
+        ).exists():
             raise serializers.ValidationError(
                 {
-                    "phone": [
-                        f"User with phone number '{friend_phone_number}' does not exist."
+                    "friend": [
+                        f"You already have {friend_user.phone_number} as a contact."
                     ]
                 }
             )
 
-        if Contact.objects.filter(
-            user=self.context["request"].user, friend=friend
-        ).exists():
-            raise serializers.ValidationError(
-                {"friend": [f"You already have {friend.phone_number} as a contact."]}
-            )
-
-        contact = Contact.objects.create(friend=friend, **validated_data)
+        contact = Contact.objects.create(
+            user=self.context["request"].user, friend=friend_user, **validated_data
+        )
         return contact
 
 

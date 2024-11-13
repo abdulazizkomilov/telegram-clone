@@ -206,20 +206,13 @@ class ContactListCreateView(generics.ListCreateAPIView):
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = ContactSerializer
 
-    # throttle_classes = [Throttle]
-
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class ContactDeleteView(generics.DestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
     queryset = Contact.objects.all()
-
-    # throttle_classes = [Throttle]
 
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)
@@ -234,8 +227,6 @@ class ContactSyncView(generics.CreateAPIView):
     serializer_class = ContactSyncSerializer
     pagination_class = None
 
-    # throttle_classes = [Throttle]
-
     def create(self, request, *args, **kwargs) -> Response:
         contacts = request.data
         response_data = []
@@ -246,6 +237,10 @@ class ContactSyncView(generics.CreateAPIView):
             last_name = contact_data.get("last_name", "")
 
             friend = User.objects.filter(phone_number=phone_number).first()
+
+            if phone_number == request.user.phone_number:
+                response_data.append({"phone_number": phone_number, "status": "self"})
+                continue
 
             if not friend:
                 response_data.append(

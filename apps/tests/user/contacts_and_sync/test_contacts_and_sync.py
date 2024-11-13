@@ -53,8 +53,24 @@ def test_list_contacts(mocker, tokens, api_client, contact):
 
 
 @pytest.mark.django_db
-def test_create_contact(mocker, api_client, tokens, user, friend):
-    """Test creating a new contact."""
+@pytest.mark.parametrize(
+    "phone, expected_status, should_create_contact",
+    [
+        ("friend.phone_number", status.HTTP_201_CREATED, True),
+        ("user.phone_number", status.HTTP_400_BAD_REQUEST, False),
+    ],
+)
+def test_create_contact(
+    mocker,
+    api_client,
+    tokens,
+    user,
+    friend,
+    phone,
+    expected_status,
+    should_create_contact,
+):
+    """Test creating a new contact with different scenarios."""
 
     mock_redis_client = MagicMock()
     mocker.patch.object(
@@ -63,20 +79,15 @@ def test_create_contact(mocker, api_client, tokens, user, friend):
 
     access, _ = tokens(user)
     client = api_client(access)
-
     mock_redis_client.smembers.return_value = {access.encode()}
 
-    data = {
-        "first_name": "New",
-        "last_name": "Friend",
-        "phone": friend.phone_number,
-    }
+    data = {"first_name": "New", "last_name": "Friend", "phone": eval(phone)}
 
     response = client.post(CONTACT_LIST_CREATE_URL, data, format="json")
 
-    assert response.status_code == status.HTTP_201_CREATED
-    assert Contact.objects.count() == 1
-    assert Contact.objects.filter(friend=friend).exists()
+    assert response.status_code == expected_status
+    assert Contact.objects.count() == (1 if should_create_contact else 0)
+    assert Contact.objects.filter(friend=friend).exists() == should_create_contact
 
 
 @pytest.mark.django_db
@@ -119,8 +130,11 @@ def test_delete_contact_not_owned(mocker, api_client, tokens, user_factory, cont
 
 
 @pytest.mark.django_db
-def test_sync_contacts(mocker, api_client, tokens, user, friend):
+def test_sync_contacts(mocker, api_client, tokens, user, friend, user_factory):
     """Test syncing contacts."""
+
+    friend_2 = user_factory.create()
+    Contact.objects.create(user=user, friend=friend_2)
 
     mock_redis_client = MagicMock()
     mocker.patch.object(
@@ -129,6 +143,13 @@ def test_sync_contacts(mocker, api_client, tokens, user, friend):
 
     access, _ = tokens(user)
     client = api_client(access)
+
+    data = {
+        "first_name": "New",
+        "last_name": "Friend",
+        "phone": friend_2.phone_number,
+    }
+    client.post(CONTACT_LIST_CREATE_URL, data, format="json")
 
     mock_redis_client.smembers.return_value = {access.encode()}
 
@@ -139,14 +160,27 @@ def test_sync_contacts(mocker, api_client, tokens, user, friend):
             "last_name": friend.last_name,
         },
         {"phone_number": "+99899234444", "first_name": "Not", "last_name": "Found"},
+        {"phone_number": user.phone_number, "first_name": "Me", "last_name": "Me"},
+        {
+            "phone_number": friend_2.phone_number,
+            "first_name": "Friend",
+            "last_name": "2",
+        },
     ]
 
     response = client.post(CONTACT_SYNC_URL, data, format="json")
+
     assert response.status_code == status.HTTP_201_CREATED
-    assert len(response.data) == 2
+    assert len(response.data) == 4
 
     assert response.data[0]["phone_number"] == friend.phone_number
     assert response.data[0]["status"] == "created"
 
     assert response.data[1]["phone_number"] == "+99899234444"
     assert response.data[1]["status"] == "not found"
+
+    assert response.data[2]["phone_number"] == user.phone_number
+    assert response.data[2]["status"] == "self"
+
+    assert response.data[3]["phone_number"] == friend_2.phone_number
+    assert response.data[3]["status"] == "already exists"
