@@ -16,6 +16,10 @@ class TrackLoginActivityMiddleware:
         if request.user.is_authenticated:
             ip_address = self.get_client_ip(request)
             user_agent = request.headers.get("user-agent", "unknown device")
+            request.user.is_online = True
+            request.user.last_seen = timezone.now()
+            request.user.last_login = timezone.now()
+            request.user.save(update_fields=["is_online", "last_seen", "last_login"])
 
             if not DeviceInfo.objects.filter(
                 user=request.user, ip_address=ip_address

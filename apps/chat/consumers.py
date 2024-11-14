@@ -2,7 +2,6 @@ from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
 from django.utils import timezone
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
-from djangochannelsrestframework import mixins
 from djangochannelsrestframework.observer.generics import ObserverModelInstanceMixin
 from django.contrib.auth.models import AnonymousUser
 from datetime import timedelta
@@ -231,14 +230,14 @@ class ChatConsumer(
         self.user.save()
 
 
-class UserConsumer(
-    mixins.ListModelMixin,
-    mixins.RetrieveModelMixin,
-    mixins.PatchModelMixin,
-    mixins.UpdateModelMixin,
-    mixins.CreateModelMixin,
-    mixins.DeleteModelMixin,
-    GenericAsyncAPIConsumer,
-):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
+# class UserConsumer(
+#     mixins.ListModelMixin,
+#     mixins.RetrieveModelMixin,
+#     mixins.PatchModelMixin,
+#     mixins.UpdateModelMixin,
+#     mixins.CreateModelMixin,
+#     mixins.DeleteModelMixin,
+#     GenericAsyncAPIConsumer,
+# ):
+#     queryset = User.objects.all()
+#     serializer_class = UserSerializer

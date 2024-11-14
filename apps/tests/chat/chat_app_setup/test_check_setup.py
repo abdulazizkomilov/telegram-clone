@@ -22,7 +22,7 @@ def test_chat_app_exists():
 
 @pytest.mark.order(2)
 @pytest.mark.django_db
-def test_custom_chat_model():
+def test_chat_model():
     """Test the custom chat model and its fields."""
 
     from chat.models import Chat
@@ -32,8 +32,38 @@ def test_custom_chat_model():
 
 @pytest.mark.order(3)
 @pytest.mark.django_db
-def test_chat_model(chat_factory):
+def test_chat_model(chat_factory):  # noqa
     """Test the custom chat model and its fields."""
     chat = chat_factory()
     assert chat.id is not None
     assert chat is not None, f"{MODEL_NAME} model not found"
+
+
+@pytest.mark.order(4)
+@pytest.mark.django_db
+def test_custom_chat_participant_model():  # noqa
+    """Test the Chat Participant model and its fields."""
+
+    from chat.models import ChatParticipant
+
+    assert ChatParticipant is not None, f"{MODEL_NAME} model not found"
+
+
+@pytest.mark.order(5)
+@pytest.mark.django_db
+def test_chat_message_model():  # noqa
+    """Test the Chat Message model and its fields."""
+
+    from chat.models import Message
+
+    assert Message is not None, f"{MODEL_NAME} model not found"
+
+
+@pytest.mark.order(6)
+@pytest.mark.django_db
+def test_chat_scheduled_message_model():  # noqa
+    """Test the Chat Scheduled Message model and its fields."""
+
+    from chat.models import ScheduledMessage
+
+    assert ScheduledMessage is not None, f"{MODEL_NAME} model not found"
