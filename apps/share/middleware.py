@@ -7,7 +7,7 @@ from channels.db import database_sync_to_async
 from channels.middleware import BaseMiddleware
 from django.db import close_old_connections
 
-# from channels.sessions import CookieMiddleware, SessionMiddleware
+from channels.sessions import CookieMiddleware, SessionMiddleware
 from user.models import User
 
 ALGORITHM = "HS256"
@@ -47,8 +47,4 @@ class TokenAuthMiddleware(BaseMiddleware):
 
 
 def JwtAuthMiddlewareStack(inner):
-    return TokenAuthMiddleware(inner)
-
-
-# def JwtAuthMiddlewareStack(inner):
-#     return CookieMiddleware(SessionMiddleware(TokenAuthMiddleware(inner)))
+    return CookieMiddleware(SessionMiddleware(TokenAuthMiddleware(inner)))

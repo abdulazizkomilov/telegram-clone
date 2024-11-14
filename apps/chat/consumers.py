@@ -1,10 +1,8 @@
 from channels.generic.websocket import AsyncJsonWebsocketConsumer
 from channels.db import database_sync_to_async
-from django.utils import timezone
 from djangochannelsrestframework.generics import GenericAsyncAPIConsumer
 from djangochannelsrestframework.observer.generics import ObserverModelInstanceMixin
 from django.contrib.auth.models import AnonymousUser
-from datetime import timedelta
 from djangochannelsrestframework.observer.generics import action
 
 from .models import Chat, ChatParticipant, Message, ScheduledMessage
@@ -152,13 +150,6 @@ class ChatConsumer(
     @database_sync_to_async
     def save_scheduled_message(self, chat: Chat, user: User, data: dict):
         scheduled_time = data.get("scheduled_time")
-        if isinstance(scheduled_time, str):
-            scheduled_time = timezone.datetime.strptime(
-                scheduled_time, "%Y-%m-%dT%H:%M:%SZ"
-            )
-            scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
-
-        scheduled_time = scheduled_time - timedelta(hours=5)
 
         return ScheduledMessage.objects.create(
             chat=chat, sender=user, text=data.get("text"), scheduled_time=scheduled_time
