@@ -85,6 +85,7 @@ class MessageSerializer(serializers.ModelSerializer):
             "liked_by",
             "likes_count",
         ]
+        read_only_fields = ["id", "sent_at", "is_read", "likes_count", "liked_by"]
 
     def get_liked_by(self, obj):
         return UserSerializer(obj.liked_by.all(), many=True).data
