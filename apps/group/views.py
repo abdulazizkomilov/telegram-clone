@@ -1,6 +1,7 @@
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from django.db.models import Q
 
 from .permissions import CanUploadMediaPermission
 from .models import Group, GroupMessage, GroupPermission
@@ -11,7 +12,7 @@ from .serializers import (
     GroupAddMemberSerializer,
     GroupPermissionSerializer,
 )
-from share.permissions import IsOwner
+from share.permissions import IsOwner, GroupOwner
 
 
 class GroupListCreateView(generics.ListCreateAPIView):
@@ -31,15 +32,19 @@ class GroupListCreateView(generics.ListCreateAPIView):
 
 class GroupRetrieveDestroyView(generics.RetrieveDestroyAPIView):
     serializer_class = GroupSerializer
-    permission_classes = [permissions.IsAuthenticated, IsOwner]
+    permission_classes = [permissions.IsAuthenticated, GroupOwner]
     http_method_names = ["get", "delete"]
 
     def get_queryset(self):
         user = self.request.user
-        return Group.objects.filter(owner=user) | Group.objects.filter(members=user)
+        group_id = self.kwargs["pk"]
+
+        return Group.objects.filter(
+            (Q(owner=user) | Q(members=user)) & Q(id=group_id)
+        ).distinct()
 
     def perform_destroy(self, instance):
-        if instance.owner != self.request.user:
+        if instance.owner != self.request.user and self.request.method == "DELETE":
             raise PermissionDenied("You do not have permission to delete this group.")
         instance.delete()
 
