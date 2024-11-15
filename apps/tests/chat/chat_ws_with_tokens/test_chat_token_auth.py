@@ -115,6 +115,14 @@ class TestChatConsumer:
             connected == expected_connection
         ), f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
 
+        if user_scenario == "owner":
+            messages = await communicator.receive_json_from()
+            assert messages["action"] == "get_messages", "Expected get_messages action"
+            assert len(messages["messages"]) == 0, "Expected no messages"
+
+            users = await communicator.receive_json_from()
+            assert users["users"][0]["id"] == str(owner.id), "Expected user ID"
+
         await communicator.disconnect()
 
     @pytest.mark.asyncio

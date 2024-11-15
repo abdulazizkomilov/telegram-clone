@@ -122,6 +122,11 @@ class TestGroupConsumer:
         assert (
             connected == expected_connection
         ), f"WebSocket connection should {'succeed' if expected_connection else 'not succeed'} for {user_scenario}."
+        if user_scenario != "another_user_in_private_group":
+            messages = await communicator.receive_json_from()
+            assert messages["action"] == "get_messages"
+            assert len(messages["messages"]) == 0
+            await communicator.receive_json_from()
 
         await communicator.disconnect()
 
