@@ -105,6 +105,15 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
 
         message = await self.save_message(self.group, self.user, data)
         serialized_message = await self.serialize_message(message)
+
+        await self.channel_layer.group_send(
+            f"group__{pk}",
+            {
+                "type": "group_message",
+                "text": serialized_message,
+            },
+        )
+
         group_members = await self.get_group_members()
 
         for member_data in group_members:
@@ -130,14 +139,6 @@ class GroupConsumer(GenericAsyncAPIConsumer, AsyncJsonWebsocketConsumer):
                         )
                 except Exception as e:
                     print(f"Error: {e}")
-
-        await self.channel_layer.group_send(
-            f"group__{pk}",
-            {
-                "type": "group_message",
-                "text": serialized_message,
-            },
-        )
 
     @action()
     async def get_group_messages(self, pk, **kwargs):
