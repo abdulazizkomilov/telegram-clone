@@ -85,3 +85,9 @@ def fake_redis():
 @pytest.fixture
 def fake_uuid():
     return uuid.uuid4()
+
+
+@pytest.fixture(autouse=True)
+def set_env_vars(monkeypatch):
+    """Automatically override ENABLE_ES for all tests."""
+    monkeypatch.setenv("ENABLE_ES", "False")
